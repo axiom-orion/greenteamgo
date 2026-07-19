@@ -18,7 +18,8 @@
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
-    "@vorionsys/greenteamgo-core": "^0.1.0"
+    "@vorionsys/greenteamgo-core": "^0.1.0",
+    "@vorionsys/greenteamgo-identity": "^0.1.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

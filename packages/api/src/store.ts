@@ -7,15 +7,24 @@
  * pattern used across the codebase (real vs mock).
  */
 import type { Receipt, Risk } from "@vorionsys/greenteamgo-core";
+import { hashApiKey } from "@vorionsys/greenteamgo-identity";
 
 export type RequestStatus = "pending" | "approved" | "denied" | "expired";
 export type Mode = "block" | "async";
 
-/** A workspace-scoped agent API key and what it may do (product-prefixed scopes). */
+/** Seed/registration input: a raw api key + what it may do (product-prefixed scopes).
+ * The raw key is hashed on the way in; it is never retained. */
 export interface ApiKeyRecord {
   api_key: string;
   workspace_id: string;
   scopes: string[]; // e.g. ["green:create", "green:read", "green:decide"]
+}
+
+/** What `resolveApiKey` returns — the grant, never the secret. */
+export interface ResolvedKey {
+  key_id?: string;
+  workspace_id: string;
+  scopes: string[];
 }
 
 export interface SigningKey {
@@ -75,7 +84,7 @@ export function toState(r: RequestRecord): RequestState {
 }
 
 export interface Store {
-  resolveApiKey(apiKey: string): ApiKeyRecord | undefined;
+  resolveApiKey(apiKey: string): ResolvedKey | undefined;
   getSigningKey(workspaceId: string): SigningKey | undefined;
 
   insertRequest(rec: RequestRecord): void;
@@ -89,24 +98,30 @@ export interface Store {
   setChainHead(workspaceId: string, receiptHash: string): void;
 }
 
-/** In-memory Store — deterministic, dependency-free; the test/dev backend. */
+/** In-memory Store — deterministic; the test/dev backend. API keys are stored
+ * as SHA-256 hashes (never plaintext) and resolved by hashing the presented key. */
 export class InMemoryStore implements Store {
-  private apiKeys = new Map<string, ApiKeyRecord>();
+  private keysByHash = new Map<string, ResolvedKey>();
   private signingKeys = new Map<string, SigningKey>();
   private requests = new Map<string, RequestRecord>(); // key: `${ws}:${id}`
   private chainHeads = new Map<string, string>();
 
   seedWorkspace(workspaceId: string, apiKey: ApiKeyRecord, signing: SigningKey): void {
-    this.apiKeys.set(apiKey.api_key, apiKey);
+    this.addApiKey(apiKey);
     this.signingKeys.set(workspaceId, signing);
   }
 
   addApiKey(apiKey: ApiKeyRecord): void {
-    this.apiKeys.set(apiKey.api_key, apiKey);
+    // Hash on the way in; the raw key is never retained.
+    this.keysByHash.set(hashApiKey(apiKey.api_key), {
+      key_id: apiKey.api_key.slice(0, 8),
+      workspace_id: apiKey.workspace_id,
+      scopes: apiKey.scopes,
+    });
   }
 
-  resolveApiKey(apiKey: string): ApiKeyRecord | undefined {
-    return this.apiKeys.get(apiKey);
+  resolveApiKey(apiKey: string): ResolvedKey | undefined {
+    return this.keysByHash.get(hashApiKey(apiKey));
   }
   getSigningKey(workspaceId: string): SigningKey | undefined {
     return this.signingKeys.get(workspaceId);

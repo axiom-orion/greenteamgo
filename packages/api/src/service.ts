@@ -15,7 +15,7 @@ import { randomUUID } from "node:crypto";
 import { GENESIS_PREV_HASH, seal, type Receipt, type Risk } from "@vorionsys/greenteamgo-core";
 
 import {
-  type ApiKeyRecord,
+  type ResolvedKey,
   type Mode,
   type RequestRecord,
   type Store,
@@ -88,13 +88,13 @@ export class RequestService {
     this.newId = opts.newId ?? (() => cryptoRandomId());
   }
 
-  private require(key: ApiKeyRecord, scope: string): void {
+  private require(key: ResolvedKey, scope: string): void {
     if (!key.scopes.includes(scope)) {
       throw new ScopeError(`api key lacks required scope "${scope}"`);
     }
   }
 
-  async create(key: ApiKeyRecord, input: CreateInput): Promise<RequestRecord> {
+  async create(key: ResolvedKey, input: CreateInput): Promise<RequestRecord> {
     this.require(key, "green:create");
     if (!RISKS.includes(input.risk)) throw new ValidationError(`invalid risk "${input.risk}"`);
     if (!(input.timeout_s > 0)) throw new ValidationError("timeout_s must be > 0");
@@ -200,14 +200,14 @@ export class RequestService {
     return receipt;
   }
 
-  get(key: ApiKeyRecord, requestId: string): RequestRecord {
+  get(key: ResolvedKey, requestId: string): RequestRecord {
     this.require(key, "green:read");
     const rec = this.store.getRequest(key.workspace_id, requestId);
     if (!rec) throw new NotFoundError(`request ${requestId} not found`);
     return this.materialize(rec);
   }
 
-  listPending(key: ApiKeyRecord): RequestRecord[] {
+  listPending(key: ResolvedKey): RequestRecord[] {
     this.require(key, "green:read");
     return this.store
       .listByStatus(key.workspace_id, "pending")
@@ -216,7 +216,7 @@ export class RequestService {
 
   /** The human's verdict. Produces the signed, chained receipt. */
   async decide(
-    key: ApiKeyRecord,
+    key: ResolvedKey,
     requestId: string,
     decision: "approved" | "denied",
     opts: { reason?: string; deciderId?: string; deciderMethod?: "app" | "biometric" } = {},

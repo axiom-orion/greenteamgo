@@ -5,6 +5,7 @@ export type {
   RequestRecord,
   RequestState,
   RequestStatus,
+  ResolvedKey,
   SigningKey,
   Store,
 } from "./store.js";

@@ -1,0 +1,25 @@
+{
+  "name": "@vorionsys/greenteamgo-identity",
+  "version": "0.1.0",
+  "description": "GreenTeamGo identity module — API key minting, hashed storage, scope resolution.",
+  "keywords": ["identity", "api-keys", "authentication", "scopes", "ai-agents"],
+  "license": "MIT",
+  "author": "Vorion",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist", "README.md"],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "prepublishOnly": "npm run build"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.5.0",
+    "vitest": "^2.1.0"
+  }
+}
