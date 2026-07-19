@@ -1,0 +1,28 @@
+{
+  "name": "@vorionsys/greenteamgo-api",
+  "version": "0.1.0",
+  "description": "GreenTeamGo inbox API — request lifecycle (create/poll/decide), fail-closed expiry, signed hash-linked receipts. Framework-agnostic; Postgres/Vercel adapters slot in.",
+  "keywords": ["approvals", "human-in-the-loop", "ai-agents", "fail-closed", "receipts", "api"],
+  "license": "MIT",
+  "author": "Vorion",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist", "README.md"],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "@vorionsys/greenteamgo-core": "^0.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.5.0",
+    "vitest": "^2.1.0"
+  }
+}
