@@ -1,0 +1,31 @@
+{
+  "name": "@vorionsys/greenteamgo-mcp",
+  "version": "0.1.0",
+  "description": "GreenTeamGo MCP server — human approval gate for AI agents. Approve from your phone; unanswered requests fail closed; every decision is a signed receipt.",
+  "keywords": ["mcp", "human-in-the-loop", "approvals", "ai-agents", "claude-code", "fail-closed"],
+  "license": "MIT",
+  "author": "Vorion",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "greenteamgo-mcp": "dist/index.js"
+  },
+  "files": ["dist", "README.md"],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.5.0",
+    "vitest": "^2.1.0"
+  }
+}
