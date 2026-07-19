@@ -1,8 +1,8 @@
 {
-  "name": "@vorionsys/greenteamgo-api",
+  "name": "@vorionsys/greenteamgo-policy",
   "version": "0.1.0",
-  "description": "GreenTeamGo inbox API — request lifecycle (create/poll/decide), fail-closed expiry, signed hash-linked receipts. Framework-agnostic; Postgres/Vercel adapters slot in.",
-  "keywords": ["approvals", "human-in-the-loop", "ai-agents", "fail-closed", "receipts", "api"],
+  "description": "GreenTeamGo policy module — versioned rules that allow/deny/gate/challenge an event before a human is paged.",
+  "keywords": ["policy", "rules-engine", "ai-agents", "authorization", "fail-closed"],
   "license": "MIT",
   "author": "Vorion",
   "type": "module",
@@ -22,7 +22,6 @@
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
-    "@vorionsys/greenteamgo-policy": "^0.1.0",
     "typescript": "^5.5.0",
     "vitest": "^2.1.0"
   }

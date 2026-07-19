@@ -43,6 +43,10 @@ export interface RequestRecord {
   expires_at: string; // ISO
   decided_at?: string; // ISO
   idempotency_key?: string;
+  // set when a policy evaluated this request (auto-decided or gated)
+  policy_id?: string;
+  policy_version?: number;
+  matched_rule_id?: string;
 }
 
 /** What the agent-facing endpoints return (never leaks internal-only columns). */

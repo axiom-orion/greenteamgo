@@ -32,6 +32,18 @@ export class NoopNotifier implements Notifier {
   }
 }
 
+/** Structural interface satisfied by @vorionsys/greenteamgo-policy's evaluate().
+ * Kept structural so the API does not hard-depend on the policy package. */
+export interface PolicyEvaluator {
+  evaluate(event: { action_type: string; risk?: Risk; actor_type?: "agent_key" | "observed" }): {
+    effect: "allow" | "deny" | "gate" | "challenge";
+    risk: Risk;
+    policy_id: string;
+    policy_version: number;
+    matched_rule_id?: string;
+  };
+}
+
 export interface CreateInput {
   action_type: string;
   summary: string;
@@ -56,6 +68,7 @@ const MAX_PAYLOAD_BYTES = 256 * 1024;
 export interface ServiceOptions {
   store: Store;
   notifier?: Notifier;
+  policy?: PolicyEvaluator;
   now?: () => number; // ms epoch
   newId?: () => string;
 }
@@ -63,12 +76,14 @@ export interface ServiceOptions {
 export class RequestService {
   private store: Store;
   private notifier: Notifier;
+  private policy?: PolicyEvaluator;
   private now: () => number;
   private newId: () => string;
 
   constructor(opts: ServiceOptions) {
     this.store = opts.store;
     this.notifier = opts.notifier ?? new NoopNotifier();
+    this.policy = opts.policy;
     this.now = opts.now ?? (() => Date.now());
     this.newId = opts.newId ?? (() => cryptoRandomId());
   }
@@ -111,9 +126,78 @@ export class RequestService {
       expires_at: new Date(nowMs + input.timeout_s * 1000).toISOString(),
       idempotency_key: input.idempotency_key,
     };
+
+    // Policy pre-decision: auto-allow/deny produce a receipt with no human;
+    // gate/challenge fall through to paging. Risk may be reclassified.
+    if (this.policy) {
+      const d = this.policy.evaluate({
+        action_type: input.action_type,
+        risk: input.risk,
+        actor_type: "agent_key",
+      });
+      rec.risk = d.risk;
+      rec.policy_id = d.policy_id;
+      rec.policy_version = d.policy_version;
+      rec.matched_rule_id = d.matched_rule_id;
+      if (d.effect === "allow" || d.effect === "deny") {
+        const decidedAt = new Date(nowMs).toISOString();
+        const status = d.effect === "allow" ? "approved" : "denied";
+        rec.receipt = this.sealFor(
+          rec,
+          d.effect === "allow" ? "approve" : "deny",
+          status,
+          { method: "policy", id: d.policy_id },
+          `auto-decided by policy ${d.policy_id} v${d.policy_version}`,
+          decidedAt,
+        );
+        rec.status = status;
+        rec.decided_at = decidedAt;
+        rec.reason = rec.receipt.reason;
+        this.store.insertRequest(rec);
+        return rec; // no human paged
+      }
+    }
+
     this.store.insertRequest(rec);
     await this.notifier.notify(rec);
     return rec;
+  }
+
+  /** Seal a decision into a chained receipt and advance the workspace chain. */
+  private sealFor(
+    rec: RequestRecord,
+    verdict: "approve" | "deny",
+    status: RequestRecord["status"],
+    decider: { method: "app" | "biometric" | "policy" | "auto"; id?: string; device_attestation?: string },
+    reason: string | undefined,
+    decidedAt: string,
+  ): Receipt {
+    const signing = this.store.getSigningKey(rec.workspace_id);
+    if (!signing) throw new Error(`no signing key for workspace ${rec.workspace_id}`);
+    const receipt = seal(
+      {
+        request_id: rec.request_id,
+        workspace_id: rec.workspace_id,
+        actor: { type: "agent_key", id: rec.workspace_id },
+        action_type: rec.action_type,
+        verdict,
+        status: status === "approved" || status === "denied" ? status : "approved",
+        risk: rec.risk,
+        payload_sha256: rec.payload_sha256,
+        policy_id: rec.policy_id,
+        decider,
+        reason,
+        created_at: rec.created_at,
+        decided_at: decidedAt,
+      },
+      {
+        keyId: signing.key_id,
+        privateKeyPem: signing.privateKeyPem,
+        prevHash: this.store.getChainHead(rec.workspace_id) ?? GENESIS_PREV_HASH,
+      },
+    );
+    this.store.setChainHead(rec.workspace_id, receipt.receipt_hash);
+    return receipt;
   }
 
   get(key: ApiKeyRecord, requestId: string): RequestRecord {
@@ -145,30 +229,14 @@ export class RequestService {
       throw new ConflictError(`request is already ${rec.status}; decisions are final`);
     }
 
-    const signing = this.store.getSigningKey(key.workspace_id);
-    if (!signing) throw new Error(`no signing key for workspace ${key.workspace_id}`);
-
     const decidedAt = new Date(this.now()).toISOString();
-    const receipt: Receipt = seal(
-      {
-        request_id: rec.request_id,
-        workspace_id: rec.workspace_id,
-        actor: { type: "agent_key", id: key.workspace_id },
-        action_type: rec.action_type,
-        verdict: decision === "approved" ? "approve" : "deny",
-        status: decision,
-        risk: rec.risk,
-        payload_sha256: rec.payload_sha256,
-        decider: { method: opts.deciderMethod ?? "app", id: opts.deciderId },
-        reason: opts.reason,
-        created_at: rec.created_at,
-        decided_at: decidedAt,
-      },
-      {
-        keyId: signing.key_id,
-        privateKeyPem: signing.privateKeyPem,
-        prevHash: this.store.getChainHead(key.workspace_id) ?? GENESIS_PREV_HASH,
-      },
+    const receipt = this.sealFor(
+      rec,
+      decision === "approved" ? "approve" : "deny",
+      decision,
+      { method: opts.deciderMethod ?? "app", id: opts.deciderId },
+      opts.reason,
+      decidedAt,
     );
 
     const updated: RequestRecord = {
@@ -179,7 +247,6 @@ export class RequestService {
       receipt,
     };
     this.store.updateRequest(updated);
-    this.store.setChainHead(key.workspace_id, receipt.receipt_hash);
     return updated;
   }
 
