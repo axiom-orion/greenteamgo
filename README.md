@@ -11,6 +11,7 @@ Part of **Newnansville Agent Teams** (with RedTeamGo). Built on Vorion (BASIS / 
 - `packages/api` — `@vorionsys/greenteamgo-api`, the **inbox API**: create → poll → decide lifecycle, fail-closed expiry, signed chained receipts, api-key scopes, idempotency, **policy-driven auto-decisions**. Framework-agnostic (in-memory store + Node handler today; Postgres + Next.js/Vercel adapters slot in). *(lifecycle + policy wired; FCM notify, Postgres/Vercel adapters to come.)*
 - `packages/policy` — `@vorionsys/greenteamgo-policy`, versioned **policy** rules: allow / deny / gate / challenge before a human is paged. Wired into the API so only judgment calls reach your phone.
 - `packages/identity` — `@vorionsys/greenteamgo-identity`, agent **identity**: API key minting + **hashed** storage (SHA-256, never plaintext) + scope resolution. Wired into the API store.
+- `packages/notify` — `@vorionsys/greenteamgo-notify`, the **notify** module: inbox-item schema + pluggable delivery (`WebhookNotifier` now, FCM later). Composes into the API's `Notifier`.
 - (planned) `apps/api` — Next.js/Vercel wrapper over `packages/api` + Postgres store.
 - (planned) `apps/mobile` — Capacitor app.
 

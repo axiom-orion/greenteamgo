@@ -1,0 +1,25 @@
+{
+  "name": "@vorionsys/greenteamgo-notify",
+  "version": "0.1.0",
+  "description": "GreenTeamGo notify module — inbox item schema and pluggable delivery (webhook now, FCM later).",
+  "keywords": ["notifications", "webhook", "push", "human-in-the-loop", "ai-agents"],
+  "license": "MIT",
+  "author": "Vorion",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist", "README.md"],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "prepublishOnly": "npm run build"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.5.0",
+    "vitest": "^2.1.0"
+  }
+}
