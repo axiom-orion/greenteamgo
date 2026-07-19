@@ -1,0 +1,28 @@
+{
+  "name": "@vorionsys/greenteamgo-core",
+  "version": "0.1.0",
+  "description": "GreenTeamGo Verdict Core — signed, hash-linked approval receipts (RFC-0002 canonical serialization, Ed25519). Shared by GreenTeamGo and RedTeamGo.",
+  "keywords": ["receipts", "ed25519", "audit-trail", "hash-chain", "ai-agents", "human-in-the-loop", "rfc-0002"],
+  "license": "MIT",
+  "author": "Vorion",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "greenteamgo-verify": "dist/cli.js"
+  },
+  "files": ["dist", "README.md"],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "prepublishOnly": "npm run build"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.5.0",
+    "vitest": "^2.1.0"
+  }
+}

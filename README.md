@@ -7,7 +7,7 @@ Part of **Newnansville Agent Teams** (with RedTeamGo). Built on Vorion (BASIS / 
 ## Repo layout
 
 - `packages/mcp` — `@vorionsys/greenteamgo-mcp`, the stdio MCP server agents install. Open-source surface; extracted to the public tier at publish time.
-- (planned) `packages/core` — verdict core modules: identity, policy, lifecycle, receipts, notify.
+- `packages/core` — `@vorionsys/greenteamgo-core`, the **Verdict Core**: RFC-0002 canonical serialization + Ed25519 signed, hash-linked **receipts** with a verify CLI. Envelope is suite-wide (Green + Red). *(receipts module built; identity/policy/lifecycle/notify still to come.)*
 - (planned) `apps/api` — hosted inbox API (Next.js on Vercel).
 - (planned) `apps/mobile` — Capacitor app.
 
