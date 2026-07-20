@@ -1,0 +1,30 @@
+{
+  "name": "@vorionsys/redteamgo",
+  "version": "0.1.0",
+  "description": "RedTeamGo — the agent guest list. Edge middleware that classifies inbound AI agents (Web Bot Auth / declared / suspected), applies per-path policy, escalates gray cases to a human via GreenTeamGo, and seals every enforcement decision into the same signed, hash-linked receipt chain.",
+  "keywords": ["ai-agents", "bot-management", "web-bot-auth", "middleware", "receipts", "human-in-the-loop", "fail-closed"],
+  "license": "MIT",
+  "author": "Vorion",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist", "README.md"],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "@vorionsys/greenteamgo-core": "^0.1.0",
+    "@vorionsys/greenteamgo-policy": "^0.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@vorionsys/greenteamgo-api": "^0.1.0",
+    "typescript": "^5.5.0",
+    "vitest": "^2.1.0"
+  }
+}
