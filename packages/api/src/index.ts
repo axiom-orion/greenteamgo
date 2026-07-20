@@ -1,6 +1,6 @@
-export { InMemoryStore, toState } from "./store.js";
+export { InMemoryStore, keyIdOf, toState } from "./store.js";
 export type {
-  ApiKeyRecord,
+  ApiKeySeed,
   Mode,
   RequestRecord,
   RequestState,

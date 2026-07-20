@@ -8,7 +8,7 @@ import { generateSignerKeyPair, verifyReceipt } from "@vorionsys/greenteamgo-cor
 import { evaluate, type Policy } from "@vorionsys/greenteamgo-policy";
 
 import { RequestService, type CreateInput, type Notifier } from "../src/service.js";
-import { InMemoryStore, type ApiKeyRecord, type RequestRecord } from "../src/store.js";
+import { InMemoryStore, type RequestRecord } from "../src/store.js";
 
 const POLICY: Policy = {
   id: "pol_1",
@@ -25,8 +25,11 @@ const POLICY: Policy = {
 function seed() {
   const store = new InMemoryStore();
   const signing = generateSignerKeyPair("ws1_key");
-  const agentKey: ApiKeyRecord = { api_key: "sk_agent", workspace_id: "ws1", scopes: ["green:create", "green:read"] };
-  store.seedWorkspace("ws1", agentKey, signing);
+  store.seedWorkspace(
+    "ws1",
+    { api_key: "sk_agent", workspace_id: "ws1", scopes: ["green:create", "green:read"] },
+    signing,
+  );
   const paged: RequestRecord[] = [];
   const notifier: Notifier = { notify: (r) => void paged.push(r) };
   const service = new RequestService({
@@ -34,7 +37,8 @@ function seed() {
     notifier,
     policy: { evaluate: (e) => evaluate(POLICY, e) },
   });
-  return { service, agentKey, signing, paged };
+  const agentKey = store.resolveApiKey("sk_agent")!;
+  return { store, service, agentKey, signing, paged };
 }
 
 const base: CreateInput = { action_type: "x", summary: "s", risk: "medium", timeout_s: 900, mode: "block" };
@@ -45,39 +49,57 @@ describe("policy-driven lifecycle", () => {
     const rec = await service.create(agentKey, { ...base, action_type: "file_read" });
     expect(rec.status).toBe("approved");
     expect(rec.receipt).toBeDefined();
-    expect(rec.receipt!.decider.method).toBe("policy");
+    expect(rec.receipt!.decider).toEqual({ method: "policy", id: "pol_1" });
     expect(rec.receipt!.policy_id).toBe("pol_1");
+    expect(rec.receipt!.policy_version).toBe(2);
     expect(rec.risk).toBe("low"); // reclassified by the rule
     expect(verifyReceipt(rec.receipt!, signing.publicKeyPem)).toEqual({ ok: true });
     expect(paged).toHaveLength(0);
   });
 
-  it("auto-DENIES a policy-denied action, no human paged", async () => {
+  it("auto-DENIES a policy-denied action, no human paged — full decider provenance on the receipt", async () => {
     const { service, agentKey, paged } = seed();
     const rec = await service.create(agentKey, { ...base, action_type: "payment", risk: "critical" });
     expect(rec.status).toBe("denied");
     expect(rec.receipt!.verdict).toBe("deny");
+    expect(rec.receipt!.status).toBe("denied");
+    expect(rec.receipt!.decider).toEqual({ method: "policy", id: "pol_1" });
+    expect(rec.receipt!.policy_id).toBe("pol_1");
+    expect(rec.receipt!.policy_version).toBe(2);
     expect(paged).toHaveLength(0);
   });
 
-  it("GATES an un-ruled action: stays pending and pages the human", async () => {
+  it("GATES an un-ruled action: stays pending, pages the human, carries policy provenance", async () => {
     const { service, agentKey, paged } = seed();
     const rec = await service.create(agentKey, { ...base, action_type: "git_push", risk: "high" });
     expect(rec.status).toBe("pending");
     expect(rec.receipt).toBeUndefined();
+    expect(rec.policy_id).toBe("pol_1");
+    expect(rec.policy_version).toBe(2);
+    expect(rec.policy_effect).toBe("gate");
     expect(paged).toHaveLength(1);
   });
 
+  it("replaying an auto-decided create returns the SAME receipt without re-sealing", async () => {
+    const { service, store, agentKey, paged } = seed();
+    const a = await service.create(agentKey, { ...base, action_type: "file_read", idempotency_key: "k1" });
+    const b = await service.create(agentKey, { ...base, action_type: "file_read", idempotency_key: "k1" });
+    expect(b.receipt!.receipt_hash).toBe(a.receipt!.receipt_hash);
+    expect(store.listReceipts("ws1")).toHaveLength(1); // chain advanced exactly once
+    expect(paged).toHaveLength(0);
+  });
+
   it("chains an auto-decision and a later human decision into one chain", async () => {
-    const { service, agentKey, signing } = seed();
+    const { service, store, agentKey, signing } = seed();
     const auto = await service.create(agentKey, { ...base, action_type: "file_read" });
     const gated = await service.create(agentKey, { ...base, action_type: "git_push" });
     // add a decide-capable key and approve the gated one
-    // (reuse the service's store via a decide scope)
-    const appKey: ApiKeyRecord = { api_key: "sk_app", workspace_id: "ws1", scopes: ["green:decide"] };
-    (service as unknown as { store: InMemoryStore }).store.addApiKey(appKey);
+    store.addApiKey({ api_key: "sk_app", workspace_id: "ws1", scopes: ["green:decide"] });
+    const appKey = store.resolveApiKey("sk_app")!;
     const human = await service.decide(appKey, gated.request_id, "approved", { deciderId: "u1" });
     expect(human.receipt!.prev_hash).toBe(auto.receipt!.receipt_hash);
+    expect(human.receipt!.policy_id).toBe("pol_1"); // the gate decision keeps its policy provenance
+    expect(human.receipt!.policy_version).toBe(2);
     expect(verifyReceipt(human.receipt!, signing.publicKeyPem)).toEqual({ ok: true });
   });
 });

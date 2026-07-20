@@ -9,6 +9,7 @@ export {
 export type {
   Actor,
   ActorType,
+  ChainStore,
   Decider,
   DeciderMethod,
   Receipt,

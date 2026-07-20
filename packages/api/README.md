@@ -16,6 +16,8 @@ The GreenTeamGo **inbox API** — the request lifecycle behind the phone. An age
 | GET | `/v1/requests?status=pending` | agent/app (`green:read`) | list pending |
 | GET | `/v1/requests/:id` | agent (`green:read`) | poll a decision (fail-closed expiry) |
 | POST | `/v1/requests/:id/decision` | app (`green:decide`) | record the human's verdict → receipt |
+| GET | `/v1/receipts` | agent/app (`green:read`) | export the workspace chain (verify-CLI input) |
+| GET | `/v1/keys` | agent/app (`green:read`) | the workspace's signing **public** key |
 
 ## Usage
 
@@ -38,8 +40,8 @@ The `Notifier` interface is where FCM push wires in (default is a no-op). Clock 
 
 ## Status
 
-Built: lifecycle, fail-closed expiry, receipts, auth/scopes, idempotency, HTTP handler, in-memory store (31 workspace tests incl. a full create→approve→verify HTTP flow).
-Next: Postgres `Store` adapter, `apps/api` Next.js/Vercel wrapper, FCM `Notifier`, and the `policy` module (currently risk is passed through).
+Built: lifecycle, fail-closed expiry **sealed into the chain as receipts**, signed receipts on every terminal state, auth/scopes, content-fingerprinted idempotency (colliding keys 409), server-side `payload_sha256` verification, policy auto-decisions (via `@vorionsys/greenteamgo-policy`, with `policy_id`/`policy_version` in the sealed receipt), chain + public-key export routes, HTTP handler, in-memory store.
+Next: Postgres `Store` adapter (must implement the atomicity contract documented in `store.ts`), `apps/api` Next.js/Vercel wrapper, FCM `Notifier`, per-workspace policy storage.
 
 ## License
 

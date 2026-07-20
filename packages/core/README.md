@@ -26,12 +26,12 @@ const r1 = seal(
     created_at: "2026-07-19T12:00:00.000Z",
     decided_at: "2026-07-19T12:00:05.000Z",
   },
-  { keyId: key.keyId, privateKeyPem: key.privateKeyPem },
+  { keyId: key.key_id, privateKeyPem: key.privateKeyPem },
 );
 
-const r2 = seal(nextBody, { keyId: key.keyId, privateKeyPem: key.privateKeyPem, prevHash: r1.receipt_hash });
+const r2 = seal(nextBody, { keyId: key.key_id, privateKeyPem: key.privateKeyPem, prevHash: r1.receipt_hash });
 
-verifyChain([r1, r2], (id) => (id === key.keyId ? key.publicKeyPem : undefined));
+verifyChain([r1, r2], (id) => (id === key.key_id ? key.publicKeyPem : undefined));
 // { ok: true }
 ```
 
@@ -56,7 +56,7 @@ The receipt envelope is intentionally wide enough for both directions of the sui
 | `verdict` | `approve \| deny \| gate \| challenge` (full core enum) |
 | `status` | `approved \| denied \| expired \| blocked \| challenged` |
 | `decider.method` | `app \| biometric \| policy \| auto` (+ reserved `device_attestation`; absent = server-signed) |
-| `policy_id` | reference to a versioned policy row |
+| `policy_id` / `policy_version` | versioned reference to the policy that produced the decision |
 | `prev_hash` / `receipt_hash` / `sig` / `signer` | the chain + signature |
 
 **v1 claim is exactly "signed, hash-linked receipts."** Device-bound (human non-repudiation) signing is a later, non-breaking append via `decider.device_attestation` — reserved now.

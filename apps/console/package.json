@@ -1,0 +1,27 @@
+{
+  "name": "@vorionsys/greenteamgo-console",
+  "version": "0.1.0",
+  "private": true,
+  "description": "GreenTeamGo demo console — runs the inbox API and a web approval page in one process. The 'phone' stand-in for the Codex governance demo.",
+  "license": "MIT",
+  "type": "module",
+  "main": "dist/server.js",
+  "bin": {
+    "greenteamgo-console": "dist/server.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/server.js",
+    "test": "echo \"(no tests)\" && exit 0"
+  },
+  "dependencies": {
+    "@vorionsys/greenteamgo-api": "^0.1.0",
+    "@vorionsys/greenteamgo-core": "^0.1.0",
+    "@vorionsys/greenteamgo-identity": "^0.1.0",
+    "@vorionsys/greenteamgo-policy": "^0.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.5.0"
+  }
+}

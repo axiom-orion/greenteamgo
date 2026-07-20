@@ -36,6 +36,7 @@ request_approval({
   summary: string,       // one line, shown in the push notification
   detail?: string,       // markdown, rendered in the app
   payload?: object|string, // args/diff; ≤256KB inline; NEVER include secrets
+  hash_only?: boolean,   // upload ONLY the payload's SHA-256, never the payload
   risk?: "low"|"medium"|"high"|"critical",  // default "medium"
   timeout_s?: number,    // default 900 (block) / 86400 (async); expiry = deny
   mode?: "block"|"async" // default "block"
@@ -62,12 +63,15 @@ request_approval({
 | `GREENTEAMGO_API_URL` | no | `https://api.greenteamgo.app` | point at a self-hosted or stub API |
 | `GREENTEAMGO_DEFAULT_RISK` | no | `medium` | |
 | `GREENTEAMGO_DEFAULT_TIMEOUT` | no | `900` | seconds, block mode |
+| `GREENTEAMGO_POLL_MS` | no | `2000` | initial poll interval (dev/test knob) |
+
+> The hosted API (`api.greenteamgo.app`) and phone app are **in development**. Today, point `GREENTEAMGO_API_URL` at a self-hosted `@vorionsys/greenteamgo-api` instance (see that package's README, or run `apps/console` for a local API + web approval page in one process). Biometric approval for high/critical is an app feature — also in development; don't rely on it yet.
 
 ## Semantics that matter
 
 - **Fail closed.** Expiry, network failure at the deadline, quota errors, any error at all → the answer is no. The agent instruction is always "proceed only on approved".
-- **Payloads are hashed.** The SHA-256 of your payload is computed client-side and lands in the signed receipt; verify later that what was approved is what ran.
-- **Approve costs attention, deny is cheap.** Approving happens in the app (biometric for high/critical). Deny works from the notification.
+- **Payloads are hashed.** The SHA-256 of your payload is computed client-side and lands in the signed receipt; verify later that what was approved is what ran. With `hash_only: true`, the payload itself never leaves your machine — only the hash does.
+- **Approve costs attention, deny is cheap.** Approving happens in the app (biometric for high/critical — in development). Deny works from the notification.
 - **Receipts are portable.** Hash-linked, Ed25519-signed, RFC-0002 canonical serialization. Export the chain and verify it without trusting the server.
 
 ## Blocking behavior

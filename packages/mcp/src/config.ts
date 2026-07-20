@@ -13,7 +13,7 @@ export interface Config {
 const RISKS = ["low", "medium", "high", "critical"] as const;
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
-  const apiKey = env.GREENTEAMGO_API_KEY ?? env.COUNTERSIGN_API_KEY;
+  const apiKey = env.GREENTEAMGO_API_KEY;
   if (!apiKey) {
     throw new Error(
       "GREENTEAMGO_API_KEY is required (workspace-scoped agent key from the GreenTeamGo app).",

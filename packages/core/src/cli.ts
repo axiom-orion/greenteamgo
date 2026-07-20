@@ -38,6 +38,12 @@ try {
   fail(`could not read/parse pubkeys: ${(err as Error).message}`);
 }
 
+if (receipts.length === 0) {
+  // An empty file "verifying" would be fail-open for an auditor handed the
+  // wrong export — refuse instead.
+  fail("no receipts in input — nothing to verify");
+}
+
 const result = verifyChain(receipts, (keyId) => keys[keyId]);
 if (result.ok) {
   process.stdout.write(`OK: ${receipts.length} receipt(s) verified — chain intact, signatures valid.\n`);

@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>GreenTeamGo — Approval Inbox</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.5 "Segoe UI", system-ui, sans-serif; background: #0b1220; color: #e2e8f0; }
+  header { padding: 20px 24px; border-bottom: 1px solid #1e293b; }
+  header h1 { margin: 0; font-size: 20px; }
+  header p { margin: 4px 0 0; color: #94a3b8; font-size: 13px; }
+  main { max-width: 760px; margin: 0 auto; padding: 24px; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: #64748b; margin: 28px 0 12px; }
+  .card { background: #111a2e; border: 1px solid #1e293b; border-radius: 12px; padding: 16px 18px; margin-bottom: 12px; }
+  .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .chip { font-size: 12px; padding: 2px 9px; border-radius: 999px; background: #1e293b; color: #cbd5e1; font-weight: 600; }
+  .risk-low { background:#14532d; color:#bbf7d0; } .risk-medium { background:#3f3f14; color:#fde68a; }
+  .risk-high { background:#4a1d1d; color:#fecaca; } .risk-critical { background:#4a1d1d; color:#fff; border:1px solid #ef4444; }
+  .summary { font-weight: 600; margin: 10px 0 4px; }
+  .detail { color: #94a3b8; font-size: 13px; white-space: pre-wrap; margin: 0; }
+  .actions { margin-top: 14px; display: flex; gap: 10px; }
+  button { border: 0; border-radius: 8px; padding: 9px 18px; font-weight: 600; cursor: pointer; font-size: 14px; }
+  .approve { background: #16a34a; color: #fff; } .deny { background: #dc2626; color: #fff; }
+  button:disabled { opacity: .5; cursor: default; }
+  .empty { color: #475569; padding: 8px 0; }
+  .receipt { margin-top: 10px; font-family: ui-monospace, monospace; font-size: 12px; color: #7dd3fc; word-break: break-all; }
+  .verified { color: #22c55e; font-weight: 700; }
+  .decided .summary { color: #94a3b8; }
+  .verdict-approved { color:#22c55e; } .verdict-denied { color:#f87171; } .verdict-expired { color:#eab308; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🟢 GreenTeamGo — Approval Inbox</h1>
+  <p>Your agent asked before acting. Approve or deny — every decision becomes a signed, hash-linked receipt.</p>
+</header>
+<main>
+  <h2>Waiting on you</h2>
+  <div id="pending"><div class="empty">No pending requests. Ask Codex to do something risky…</div></div>
+
+  <h2>Decided</h2>
+  <div id="history"><div class="empty">Nothing decided yet.</div></div>
+</main>
+
+<script>
+const riskClass = (r) => "risk-" + (r || "medium");
+
+async function decide(id, decision) {
+  let reason;
+  if (decision === "denied") reason = prompt("Reason for denial (optional):") || undefined;
+  await fetch("/ui/decide", {
+    method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ request_id: id, decision, reason }),
+  });
+  refresh();
+}
+
+function pendingCard(r) {
+  const el = document.createElement("div");
+  el.className = "card";
+  el.innerHTML = `
+    <div class="row">
+      <span class="chip">${r.action_type}</span>
+      <span class="chip ${riskClass(r.risk)}">${(r.risk||"").toUpperCase()}</span>
+    </div>
+    <div class="summary">${escapeHtml(r.summary)}</div>
+    ${r.detail ? `<pre class="detail">${escapeHtml(r.detail)}</pre>` : ""}
+    <div class="actions">
+      <button class="approve">Approve</button>
+      <button class="deny">Deny</button>
+    </div>`;
+  el.querySelector(".approve").onclick = () => decide(r.request_id, "approved");
+  el.querySelector(".deny").onclick = () => decide(r.request_id, "denied");
+  return el;
+}
+
+function historyCard(r) {
+  const el = document.createElement("div");
+  el.className = "card decided";
+  const short = r.receipt ? r.receipt.receipt_hash.slice(0, 24) + "…" : "";
+  el.innerHTML = `
+    <div class="row">
+      <span class="chip">${r.action_type}</span>
+      <span class="verdict-${r.status}">${r.status.toUpperCase()}</span>
+      ${r.reason ? `<span class="detail">— ${escapeHtml(r.reason)}</span>` : ""}
+    </div>
+    <div class="summary">${escapeHtml(r.summary)}</div>
+    ${r.receipt ? `<div class="receipt">receipt ${short} ${r.receipt_verified ? '<span class="verified">✓ signed &amp; verified</span>' : "⚠ unverified"}</div>` : ""}`;
+  return el;
+}
+
+function render(id, items, make, emptyMsg) {
+  const box = document.getElementById(id);
+  box.innerHTML = "";
+  if (!items.length) { box.innerHTML = `<div class="empty">${emptyMsg}</div>`; return; }
+  items.forEach((r) => box.appendChild(make(r)));
+}
+
+async function refresh() {
+  try {
+    const [pending, history] = await Promise.all([
+      fetch("/ui/pending").then((r) => r.json()),
+      fetch("/ui/history").then((r) => r.json()),
+    ]);
+    render("pending", pending, pendingCard, "No pending requests. Ask Codex to do something risky…");
+    render("history", history, historyCard, "Nothing decided yet.");
+  } catch { /* server not up yet */ }
+}
+
+function escapeHtml(s) { return String(s).replace(/[&<>"]/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c])); }
+
+refresh();
+setInterval(refresh, 1500);
+</script>
+</body>
+</html>

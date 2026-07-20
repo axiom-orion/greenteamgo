@@ -5,16 +5,23 @@
  * implementation used in tests and local dev swaps 1:1 for a Postgres adapter
  * (Vercel/Neon) later — no service changes. This mirrors the dual-backend
  * pattern used across the codebase (real vs mock).
+ *
+ * ATOMICITY CONTRACT: the in-memory store is synchronous, so appendReceipt
+ * and request status transitions are race-free by construction. A persistent
+ * adapter MUST keep them atomic — appendReceipt is a compare-and-swap on the
+ * chain head plus an insert in one transaction, and updateRequest of a
+ * decision must fail if the row is no longer pending — or concurrent
+ * decisions fork the chain / double-decide a request.
  */
-import type { Receipt, Risk } from "@vorionsys/greenteamgo-core";
+import type { Actor, Receipt, Risk } from "@vorionsys/greenteamgo-core";
 import { hashApiKey } from "@vorionsys/greenteamgo-identity";
 
 export type RequestStatus = "pending" | "approved" | "denied" | "expired";
 export type Mode = "block" | "async";
 
-/** Seed/registration input: a raw api key + what it may do (product-prefixed scopes).
- * The raw key is hashed on the way in; it is never retained. */
-export interface ApiKeyRecord {
+/** Seed/registration input: a raw api key + what it may do (product-prefixed
+ * scopes). The raw key is hashed on the way in; it is never retained. */
+export interface ApiKeySeed {
   api_key: string;
   workspace_id: string;
   scopes: string[]; // e.g. ["green:create", "green:read", "green:decide"]
@@ -22,7 +29,7 @@ export interface ApiKeyRecord {
 
 /** What `resolveApiKey` returns — the grant, never the secret. */
 export interface ResolvedKey {
-  key_id?: string;
+  key_id: string;
   workspace_id: string;
   scopes: string[];
 }
@@ -36,6 +43,9 @@ export interface SigningKey {
 export interface RequestRecord {
   request_id: string;
   workspace_id: string;
+  /** who asked: the authenticated agent key, or (for Red escalations) the
+   * observed foreign agent the request is about */
+  actor: Actor;
   action_type: string;
   summary: string;
   detail?: string;
@@ -52,9 +62,14 @@ export interface RequestRecord {
   expires_at: string; // ISO
   decided_at?: string; // ISO
   idempotency_key?: string;
+  /** content hash for idempotency-collision detection */
+  fingerprint?: string;
+  /** last notification delivery failure, if any (cleared on success) */
+  notify_error?: string;
   // set when a policy evaluated this request (auto-decided or gated)
   policy_id?: string;
   policy_version?: number;
+  policy_effect?: "allow" | "deny" | "gate" | "challenge";
   matched_rule_id?: string;
 }
 
@@ -95,7 +110,19 @@ export interface Store {
 
   /** receipt_hash of the workspace's latest receipt, for chain linking. */
   getChainHead(workspaceId: string): string | undefined;
-  setChainHead(workspaceId: string, receiptHash: string): void;
+  /** Append a sealed receipt: advance the chain head AND record the receipt
+   * in the workspace's ordered log, atomically (see contract above). */
+  appendReceipt(workspaceId: string, receipt: Receipt): void;
+  /** The workspace's receipts in chain order — the verify CLI's input. */
+  listReceipts(workspaceId: string): Receipt[];
+}
+
+/** Extract the public key_id handle from a `gtg_<key_id>_<secret>` raw key;
+ * non-gtg keys (tests, custom seeds) fall back to a hash-derived handle so a
+ * key_id always exists and never contains secret material. */
+export function keyIdOf(rawKey: string): string {
+  const m = rawKey.match(/^gtg_(.+)_[A-Za-z0-9_-]+$/);
+  return m ? m[1] : "k_" + hashApiKey(rawKey).slice(0, 12);
 }
 
 /** In-memory Store — deterministic; the test/dev backend. API keys are stored
@@ -105,16 +132,17 @@ export class InMemoryStore implements Store {
   private signingKeys = new Map<string, SigningKey>();
   private requests = new Map<string, RequestRecord>(); // key: `${ws}:${id}`
   private chainHeads = new Map<string, string>();
+  private receiptLogs = new Map<string, Receipt[]>();
 
-  seedWorkspace(workspaceId: string, apiKey: ApiKeyRecord, signing: SigningKey): void {
+  seedWorkspace(workspaceId: string, apiKey: ApiKeySeed, signing: SigningKey): void {
     this.addApiKey(apiKey);
     this.signingKeys.set(workspaceId, signing);
   }
 
-  addApiKey(apiKey: ApiKeyRecord): void {
+  addApiKey(apiKey: ApiKeySeed): void {
     // Hash on the way in; the raw key is never retained.
     this.keysByHash.set(hashApiKey(apiKey.api_key), {
-      key_id: apiKey.api_key.slice(0, 8),
+      key_id: keyIdOf(apiKey.api_key),
       workspace_id: apiKey.workspace_id,
       scopes: apiKey.scopes,
     });
@@ -149,7 +177,13 @@ export class InMemoryStore implements Store {
   getChainHead(workspaceId: string): string | undefined {
     return this.chainHeads.get(workspaceId);
   }
-  setChainHead(workspaceId: string, receiptHash: string): void {
-    this.chainHeads.set(workspaceId, receiptHash);
+  appendReceipt(workspaceId: string, receipt: Receipt): void {
+    this.chainHeads.set(workspaceId, receipt.receipt_hash);
+    const log = this.receiptLogs.get(workspaceId) ?? [];
+    log.push(receipt);
+    this.receiptLogs.set(workspaceId, log);
+  }
+  listReceipts(workspaceId: string): Receipt[] {
+    return [...(this.receiptLogs.get(workspaceId) ?? [])];
   }
 }

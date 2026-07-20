@@ -80,6 +80,9 @@ export interface ReceiptBody {
   /** SHA-256 of the (never-uploaded-in-hash-only-mode) payload */
   payload_sha256?: string;
   policy_id?: string;
+  /** version of policy_id that produced this decision — the id stays stable
+   * across edits, so a bare id cannot prove which rules were in force */
+  policy_version?: number;
   decider: Decider;
   reason?: string;
   /** ISO-8601 request creation time */
@@ -105,6 +108,21 @@ export interface VerifyResult {
   reason?: string;
 }
 
+/**
+ * Where a workspace's chain lives. Green's inbox API and Red's edge
+ * middleware append to the SAME per-workspace chain through this seam — one
+ * logbook. The in-memory implementations are synchronous and race-free by
+ * construction; a persistent implementation MUST make read-head → seal →
+ * append atomic (compare-and-swap on the head), or two concurrent decisions
+ * fork the chain.
+ */
+export interface ChainStore {
+  /** receipt_hash of the latest receipt, for prev_hash linking. */
+  getChainHead(workspaceId: string): string | undefined;
+  /** Advance the head to this receipt AND record it in the ordered log. */
+  appendReceipt(workspaceId: string, receipt: Receipt): void;
+}
+
 function sha256Hex(bytes: Uint8Array): string {
   return createHash("sha256").update(bytes).digest("hex");
 }
@@ -115,15 +133,18 @@ function signedContent(r: Omit<Receipt, "receipt_hash" | "sig">): Record<string,
   return { ...r };
 }
 
-/** Generate an Ed25519 signing key pair for a workspace/decider. */
+/** Generate an Ed25519 signing key pair for a workspace/decider. Field names
+ * match the receipt envelope (`key_id`) so the result drops straight into a
+ * store's SigningKey — a camelCase mismatch here once produced receipts whose
+ * signer.key_id was silently dropped by canonicalization. */
 export function generateSignerKeyPair(keyId: string): {
-  keyId: string;
+  key_id: string;
   publicKeyPem: string;
   privateKeyPem: string;
 } {
   const { publicKey, privateKey } = generateKeyPairSync("ed25519");
   return {
-    keyId,
+    key_id: keyId,
     publicKeyPem: publicKey.export({ type: "spki", format: "pem" }) as string,
     privateKeyPem: privateKey.export({ type: "pkcs8", format: "pem" }) as string,
   };
@@ -140,9 +161,16 @@ export function seal(
   body: ReceiptBody,
   opts: { keyId: string; privateKeyPem: string; prevHash?: string },
 ): Receipt {
+  if (!opts.keyId) {
+    throw new Error("seal: keyId is required — a receipt without signer.key_id is unverifiable");
+  }
   const content: Omit<Receipt, "receipt_hash" | "sig"> = {
     v: 1,
-    ...body,
+    // JSON round-trip so the bytes we sign are EXACTLY the bytes a verifier
+    // reconstructs from the wire form. Without this, values with toJSON
+    // (Date) or non-plain-JSON shapes (Buffer/TypedArray, e.g. inside
+    // actor.evidence) verify in memory but fail forever after transport.
+    ...(JSON.parse(JSON.stringify(body)) as ReceiptBody),
     prev_hash: opts.prevHash ?? GENESIS_PREV_HASH,
     signer: { key_id: opts.keyId, alg: "ed25519" },
   };

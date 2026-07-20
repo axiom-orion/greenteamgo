@@ -3,7 +3,8 @@
   "private": true,
   "description": "GreenTeamGo — human approval gate for AI agents. Newnansville Agent Teams.",
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "apps/*"
   ],
   "scripts": {
     "build": "npm run build --workspaces",

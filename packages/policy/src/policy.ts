@@ -21,6 +21,9 @@ export interface PolicyEvent {
   /** caller-declared risk hint (a rule may override via risk_class) */
   risk?: Risk;
   actor_type?: ActorType;
+  /** free-form dimensions beyond action_type, e.g. Red's inbound traffic
+   * tags: "class:suspected_agent", "method:POST", "agent:gptbot" */
+  tags?: string[];
 }
 
 export interface Rule {
@@ -30,6 +33,8 @@ export interface Rule {
   /** event risk must be at least this */
   min_risk?: Risk;
   actor_type?: ActorType;
+  /** every listed tag must be present on the event (AND semantics) */
+  tags?: string[];
   effect: Effect;
   /** assign/override the risk class carried into the receipt */
   risk_class?: Risk;
@@ -65,6 +70,7 @@ function ruleMatches(rule: Rule, event: PolicyEvent): boolean {
     const eventRisk = event.risk ?? "medium";
     if (RISK_ORDER[eventRisk] < RISK_ORDER[rule.min_risk]) return false;
   }
+  if (rule.tags && !rule.tags.every((t) => event.tags?.includes(t))) return false;
   return true;
 }
 
@@ -92,4 +98,24 @@ export function evaluate(policy: Policy, event: PolicyEvent): PolicyDecision {
 /** True when the effect is terminal (auto-decided, no human needed). */
 export function isTerminal(effect: Effect): boolean {
   return effect === "allow" || effect === "deny";
+}
+
+/**
+ * The ONE mapping from a machine-decided effect to the receipt (verdict,
+ * status) both products seal. Green is "outbound" (deny → denied), Red is
+ * "inbound" (deny → blocked). `gate` is deliberately absent: it is not
+ * terminal — its receipt shape depends on the product's escalation lifecycle.
+ */
+export function receiptOutcome(
+  effect: "allow" | "deny" | "challenge",
+  direction: "outbound" | "inbound",
+): { verdict: "approve" | "deny" | "challenge"; status: "approved" | "denied" | "blocked" | "challenged" } {
+  switch (effect) {
+    case "allow":
+      return { verdict: "approve", status: "approved" };
+    case "deny":
+      return { verdict: "deny", status: direction === "inbound" ? "blocked" : "denied" };
+    case "challenge":
+      return { verdict: "challenge", status: "challenged" };
+  }
 }

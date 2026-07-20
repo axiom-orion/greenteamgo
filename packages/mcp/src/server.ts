@@ -38,6 +38,12 @@ export function buildServer(cfg: Config, client?: GreenTeamGoClient): McpServer 
           .union([z.string(), z.record(z.unknown())])
           .optional()
           .describe("Args/diff as object or string. Max 256KB inline. NEVER include secrets."),
+        hash_only: z
+          .boolean()
+          .optional()
+          .describe(
+            "Upload ONLY the payload's SHA-256, never the payload itself. Use for sensitive payloads; the human sees summary/detail plus the hash the receipt commits to.",
+          ),
         risk: z
           .enum(["low", "medium", "high", "critical"])
           .optional()
@@ -66,20 +72,23 @@ export function buildServer(cfg: Config, client?: GreenTeamGoClient): McpServer 
           summary: args.summary,
           detail: args.detail,
           payload: args.payload,
+          hash_only: args.hash_only,
           risk,
           timeout_s: timeoutS,
           mode,
         });
+        // Pre-decided by server-side policy (auto-allow/deny rules) — report it
+        // regardless of mode: an async caller told "pending" after an auto-DENY
+        // would keep working toward an action that is already refused.
+        if (created.status && created.status !== "pending") {
+          return jsonResult(decisionView(created));
+        }
         if (mode === "async") {
           return jsonResult({
             status: "pending",
             request_id: created.request_id,
             expires_at: created.expires_at,
           });
-        }
-        // Pre-decided by server-side policy (auto-allow/deny rules) — no wait needed.
-        if (created.status && created.status !== "pending") {
-          return jsonResult(decisionView(created));
         }
         const deadline = Date.now() + timeoutS * 1000 + 5000;
         const state = await api.waitForDecision(created.request_id, deadline, {
@@ -122,6 +131,7 @@ export function buildServer(cfg: Config, client?: GreenTeamGoClient): McpServer 
         return jsonResult(
           items.map((r) => ({
             request_id: r.request_id,
+            status: r.status,
             summary: r.summary,
             risk: r.risk,
             created_at: r.created_at,

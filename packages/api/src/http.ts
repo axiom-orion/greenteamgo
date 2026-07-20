@@ -6,6 +6,8 @@
  *   GET  /v1/requests?status=pending  agent/app lists pending
  *   GET  /v1/requests/:id             agent polls a decision (fail-closed expiry)
  *   POST /v1/requests/:id/decision    app records the human's verdict → receipt
+ *   GET  /v1/receipts                 the workspace chain, in order (verify CLI input)
+ *   GET  /v1/keys                     the workspace's signing PUBLIC key
  *
  * Returned as a plain (req,res) Node handler so it drops into a test server, a
  * Next.js Route Handler, or a Vercel function unchanged.
@@ -72,6 +74,7 @@ export function createHandler(service: RequestService, store: Store) {
           mode: input.mode,
           nonce: input.nonce,
           idempotency_key: typeof idem === "string" ? idem : undefined,
+          actor: input.actor,
         });
         return send(res, 201, toState(rec));
       }
@@ -82,6 +85,16 @@ export function createHandler(service: RequestService, store: Store) {
         return send(res, 200, pending);
       }
 
+      // GET /v1/receipts — the chain, independently verifiable
+      if (method === "GET" && url.pathname === "/v1/receipts") {
+        return send(res, 200, service.listReceipts(keyRec));
+      }
+
+      // GET /v1/keys — the signing public key for the verify CLI
+      if (method === "GET" && url.pathname === "/v1/keys") {
+        return send(res, 200, service.publicKey(keyRec));
+      }
+
       const decisionMatch = url.pathname.match(/^\/v1\/requests\/([^/]+)\/decision$/);
       const getMatch = url.pathname.match(/^\/v1\/requests\/([^/]+)$/);
 
@@ -90,6 +103,11 @@ export function createHandler(service: RequestService, store: Store) {
         const body = JSON.parse((await readBody(req)) || "{}");
         if (body.decision !== "approved" && body.decision !== "denied") {
           return send(res, 400, { error: 'decision must be "approved" or "denied"' });
+        }
+        // "policy"/"auto" are machine verdicts; a human endpoint may not
+        // claim them (and may not invent new methods) in a signed receipt.
+        if (body.method !== undefined && body.method !== "app" && body.method !== "biometric") {
+          return send(res, 400, { error: 'method must be "app" or "biometric"' });
         }
         const rec = await service.decide(keyRec, decodeURIComponent(decisionMatch[1]), body.decision, {
           reason: body.reason,

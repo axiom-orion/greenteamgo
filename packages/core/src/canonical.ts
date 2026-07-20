@@ -13,6 +13,11 @@
  */
 
 function sortKeys(value: unknown): unknown {
+  if (typeof value === "number" && !Number.isFinite(value)) {
+    // JSON.stringify would silently turn NaN/Infinity into null — a value
+    // change under a signature. Refuse instead (fail closed).
+    throw new TypeError(`cannot canonicalize non-finite number ${value}`);
+  }
   if (value === null || typeof value !== "object") return value;
   if (Array.isArray(value)) return value.map(sortKeys);
   const out: Record<string, unknown> = {};

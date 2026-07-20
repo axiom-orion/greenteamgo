@@ -3,6 +3,8 @@ import { createHash, randomUUID } from "node:crypto";
 export type Risk = "low" | "medium" | "high" | "critical";
 export type Status = "pending" | "approved" | "denied" | "expired";
 
+const VALID_STATUSES: Status[] = ["pending", "approved", "denied", "expired"];
+
 export const MAX_PAYLOAD_BYTES = 256 * 1024;
 
 export interface Receipt {
@@ -26,6 +28,9 @@ export interface CreateInput {
   detail?: string;
   /** object or string; ≤256KB inline */
   payload?: unknown;
+  /** hash-only mode: upload ONLY the payload's SHA-256, never the payload —
+   * the reviewer sees summary/detail plus a hash the receipt commits to */
+  hash_only?: boolean;
   risk: Risk;
   timeout_s: number;
   mode: "block" | "async";
@@ -82,7 +87,7 @@ export class GreenTeamGoClient {
       action_type: input.action_type,
       summary: input.summary,
       detail: input.detail,
-      payload: enc?.body,
+      payload: input.hash_only ? undefined : enc?.body,
       payload_sha256: enc?.sha256,
       risk: input.risk,
       timeout_s: input.timeout_s,
@@ -121,7 +126,13 @@ export class GreenTeamGoClient {
       { headers: this.headers() },
     );
     if (!res.ok) throw new ApiError(res.status, await res.text());
-    return (await res.json()) as RequestState;
+    const state = (await res.json()) as RequestState;
+    // A 200 with an unrecognizable body (a proxy error page, a load balancer
+    // timeout JSON) must never read as a terminal decision. FAIL CLOSED.
+    if (!VALID_STATUSES.includes(state?.status)) {
+      throw new ApiError(res.status, `malformed response: status "${state?.status}"`);
+    }
+    return state;
   }
 
   async listPending(): Promise<RequestState[]> {

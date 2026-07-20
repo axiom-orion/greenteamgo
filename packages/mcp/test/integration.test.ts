@@ -14,7 +14,7 @@ import {
   InMemoryStore,
   RequestService,
   createHandler,
-  type ApiKeyRecord,
+  type ApiKeySeed,
 } from "@vorionsys/greenteamgo-api";
 
 import { GreenTeamGoClient } from "../src/client.js";
@@ -25,8 +25,8 @@ afterEach(() => new Promise<void>((r) => (server ? server.close(() => r()) : r()
 function startApi() {
   const store = new InMemoryStore();
   const signing = generateSignerKeyPair("ws1_key");
-  const agentKey: ApiKeyRecord = { api_key: "sk_agent", workspace_id: "ws1", scopes: ["green:create", "green:read"] };
-  const appKey: ApiKeyRecord = { api_key: "sk_app", workspace_id: "ws1", scopes: ["green:read", "green:decide"] };
+  const agentKey: ApiKeySeed = { api_key: "sk_agent", workspace_id: "ws1", scopes: ["green:create", "green:read"] };
+  const appKey: ApiKeySeed = { api_key: "sk_app", workspace_id: "ws1", scopes: ["green:read", "green:decide"] };
   store.seedWorkspace("ws1", agentKey, signing);
   store.addApiKey(appKey);
   const service = new RequestService({ store });
