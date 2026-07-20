@@ -44,6 +44,30 @@ const HUMAN = {
   "sec-fetch-mode": "navigate",
 };
 
+type FakeEscalator = Escalator & { calls: number; resolution: "pending" | "approved" | "denied"; current: () => Escalation };
+function fakeEscalator(): FakeEscalator {
+  const esc: FakeEscalator = {
+    calls: 0,
+    resolution: "pending",
+    async escalate(): Promise<Escalation> {
+      esc.calls++;
+      return esc.current();
+    },
+    async check(): Promise<Escalation> {
+      return esc.current();
+    },
+    current(): Escalation {
+      // a resolved escalation carries how it was decided; here, a human tap
+      return {
+        request_id: "req_esc_1",
+        status: esc.resolution,
+        decider_method: esc.resolution === "pending" ? undefined : "app",
+      };
+    },
+  };
+  return esc;
+}
+
 describe("Gate — product invariants", () => {
   it("humans always pass: no policy, no receipt", async () => {
     const { gate: g, chain } = gate();
@@ -65,7 +89,7 @@ describe("Gate — product invariants", () => {
     expect(r.receipt!.decider.method).toBe("policy");
     expect(r.receipt!.policy_id).toBe("pol_red");
     expect(r.receipt!.policy_version).toBe(1);
-    expect(r.receipt!.action_type).toBe("GET /blog");
+    expect(r.receipt!.action_type).toBe("/blog"); // bare path = what the policy evaluated
   });
 
   it("a denied agent is blocked with a deny/blocked receipt", async () => {
@@ -120,21 +144,6 @@ describe("Gate — product invariants", () => {
 });
 
 describe("Gate — escalation loop", () => {
-  function fakeEscalator(): Escalator & { calls: number; resolution: "pending" | "approved" | "denied" } {
-    const esc = {
-      calls: 0,
-      resolution: "pending" as "pending" | "approved" | "denied",
-      async escalate(): Promise<Escalation> {
-        esc.calls++;
-        return { request_id: "req_esc_1", status: esc.resolution };
-      },
-      async check(): Promise<"pending" | "approved" | "denied"> {
-        return esc.resolution;
-      },
-    };
-    return esc;
-  }
-
   it("pending escalation → challenged with a gate-verdict receipt; approval → standing allow", async () => {
     const escalator = fakeEscalator();
     const allowStore = new InMemoryAllowStore(() => 1_000_000);
@@ -197,11 +206,149 @@ describe("Gate — escalation loop", () => {
       escalate: () => {
         throw new Error("green api down");
       },
-      check: async () => "pending",
+      check: async () => ({ request_id: "x", status: "pending" }),
     };
     const { gate: g } = gate({ escalator });
     const r = await g.handle(inbound({ path: "/api/orders" }));
     expect(r.disposition).toBe("challenge");
     expect(r.reason).toMatch(/fail closed/);
+  });
+
+  it("a machine-decided escalation (Green auto/expiry) is sealed as decider.method auto, not app", async () => {
+    const escalator = fakeEscalator();
+    escalator.resolution = "denied";
+    // simulate Green's expiry (auto), not a human tap
+    escalator.current = () => ({ request_id: "req_esc_1", status: "denied", decider_method: "auto" });
+    const { gate: g } = gate({ escalator, allowStore: new InMemoryAllowStore(() => 1_000_000) });
+    const r = await g.handle(inbound({ path: "/api/orders" }));
+    expect(r.disposition).toBe("block");
+    expect(r.receipt!.decider.method).toBe("auto");
+  });
+
+  it("a standing block applies on ANY path, not just the escalated one", async () => {
+    const escalator = fakeEscalator();
+    escalator.resolution = "denied";
+    const { gate: g } = gate({ escalator, allowStore: new InMemoryAllowStore(() => 1_000_000) });
+    await g.handle(inbound({ path: "/api/orders" })); // creates standing block
+    const other = await g.handle(inbound({ path: "/blog", headers: { "user-agent": "curl/8.4.0" } }));
+    expect(other.disposition).toBe("block");
+    expect(other.receipt!.status).toBe("blocked");
+    expect(other.reason).toMatch(/standing block/);
+  });
+});
+
+describe("Gate — identity provenance (spoof isolation)", () => {
+  it("humans always pass even under a deny-everything policy — no receipt, no block", async () => {
+    const chain = new InMemoryChainStore();
+    const hostile: Policy = {
+      id: "pol_deny", workspace_id: "ws1", version: 1,
+      default_effect: "deny", rules: [{ id: "r_all", action_type: "*", effect: "deny" }],
+    };
+    const g = new Gate({
+      workspace_id: "ws1", policy: hostile,
+      signing: { key_id: key.key_id, privateKeyPem: key.privateKeyPem, chain },
+      now: () => 1_000_000,
+    });
+    const r = await g.handle(inbound({ headers: { ...HUMAN } }));
+    expect(r.disposition).toBe("allow");
+    expect(r.receipt).toBeUndefined();
+    expect(chain.listReceipts("ws1")).toHaveLength(0);
+  });
+
+  it("a declared bot's standing allow is IP-scoped: a UA-spoofer from another IP cannot inherit it", async () => {
+    const escalator = fakeEscalator();
+    escalator.resolution = "approved";
+    const allowStore = new InMemoryAllowStore(() => 1_000_000);
+    // no ipVerifier → GPTBot is declared (not ip-confirmed), so its standing
+    // identity is ip-scoped, NOT the forgeable agent id. policy gates it.
+    const policy: Policy = {
+      id: "pol", workspace_id: "ws1", version: 1, default_effect: "allow",
+      rules: [{ id: "r", action_type: "/api/*", tags: ["class:declared_bot"], effect: "gate" }],
+    };
+    const g = new Gate({
+      workspace_id: "ws1", policy, escalator, allowStore,
+      signing: { key_id: key.key_id, privateKeyPem: key.privateKeyPem, chain: new InMemoryChainStore() },
+      now: () => 1_000_000,
+    });
+    // real gptbot at 8.8.8.8 approved → standing allow keyed ip:8.8.8.8 (NOT agent:gptbot)
+    await g.handle(inbound({ headers: { "user-agent": "GPTBot/1.1" }, path: "/api/x", ip: "8.8.8.8" }));
+    expect(allowStore.get("agent:gptbot")).toBeUndefined(); // never keyed on the forgeable id
+    expect(allowStore.get("ip:8.8.8.8")).toBeDefined();
+    const callsAfterReal = escalator.calls;
+    // a spoofer sends the same UA from a different IP → identity ip:6.6.6.6 → miss
+    await g.handle(inbound({ headers: { "user-agent": "GPTBot/1.1" }, path: "/api/x", ip: "6.6.6.6" }));
+    expect(escalator.calls).toBe(callsAfterReal + 1); // had to re-escalate, did not inherit
+    expect(allowStore.get("ip:6.6.6.6")).toBeDefined(); // its own scoped allow, distinct from 8.8.8.8
+  });
+
+  it("distinct agents behind different IPs do not share a standing allow", async () => {
+    const escalator = fakeEscalator();
+    escalator.resolution = "approved";
+    const { gate: g } = gate({ escalator, allowStore: new InMemoryAllowStore(() => 1_000_000) });
+    await g.handle(inbound({ path: "/api/orders", ip: "1.1.1.1" })); // approve ip 1.1.1.1
+    const callsAfterFirst = escalator.calls;
+    await g.handle(inbound({ path: "/api/orders", ip: "2.2.2.2" }));
+    // different IP → different identity → must escalate again, not inherit
+    expect(escalator.calls).toBe(callsAfterFirst + 1);
+  });
+
+  it("a UA-only identity (no IP) never persists a standing ALLOW", async () => {
+    const escalator = fakeEscalator();
+    escalator.resolution = "approved";
+    const allowStore = new InMemoryAllowStore(() => 1_000_000);
+    const { gate: g } = gate({ escalator, allowStore });
+    // no ip on the request → identity is ua:… (forgeable) → allow not persisted
+    const first = await g.handle(inbound({ path: "/api/orders", ip: undefined }));
+    expect(first.disposition).toBe("allow");
+    expect(allowStore.get(`ua:curl/8.4.0`)).toBeUndefined();
+  });
+});
+
+describe("Gate — fail-closed sealing + monitor truthfulness", () => {
+  it("a throwing chain store still fails closed to challenge for agents (never allow)", async () => {
+    const brokenChain = {
+      getChainHead: () => undefined,
+      appendReceipt: () => {
+        throw new Error("chain store down");
+      },
+    };
+    const g = new Gate({
+      workspace_id: "ws1", policy: POLICY,
+      signing: { key_id: key.key_id, privateKeyPem: key.privateKeyPem, chain: brokenChain },
+      now: () => 1_000_000,
+    });
+    const r = await g.handle(inbound({ path: "/checkout" })); // policy → challenge, seal throws
+    expect(r.disposition).toBe("challenge");
+    // a human with the same broken chain still passes (never touches sealing)
+    const human = await g.handle(inbound({ headers: { ...HUMAN } }));
+    expect(human.disposition).toBe("allow");
+  });
+
+  it("a classifier crash disposes challenge with a classifier_error receipt, never allow", async () => {
+    const g = new Gate({
+      workspace_id: "ws1", policy: POLICY,
+      signing: { key_id: key.key_id, privateKeyPem: key.privateKeyPem, chain: new InMemoryChainStore() },
+      knownAgents: [{ id: "bad" } as never], // malformed registry entry → classify throws
+      now: () => 1_000_000,
+    });
+    const r = await g.handle(inbound({ path: "/checkout" }));
+    expect(r.disposition).toBe("challenge");
+    expect(r.classification.signals).toContain("classifier_error");
+  });
+
+  it("monitor mode seals a truthful receipt (blocked verdict, marked monitored)", async () => {
+    const { gate: g } = gate({ monitor: true });
+    const r = await g.handle(inbound({ headers: { "user-agent": "Bytespider" }, path: "/z" }));
+    expect(r.disposition).toBe("allow");
+    expect(r.monitored).toBe(true);
+    expect(r.receipt!.status).toBe("blocked"); // the policy verdict, truthfully
+    expect(r.receipt!.reason).toMatch(/monitor: allowed through/);
+    expect((r.receipt!.actor.evidence as Record<string, unknown>).monitor).toBe(true);
+  });
+
+  it("the sealed action_type is the bare path the policy evaluated (reproducible)", async () => {
+    const { gate: g } = gate();
+    const r = await g.handle(inbound({ method: "POST", headers: { "user-agent": "Bytespider" }, path: "/checkout" }));
+    expect(r.receipt!.action_type).toBe("/checkout"); // not "POST /checkout"
   });
 });

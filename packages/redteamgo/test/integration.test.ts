@@ -103,7 +103,8 @@ describe("RedTeamGo ↔ GreenTeamGo (the full suite loop)", () => {
     ).json();
     expect(pending).toHaveLength(1);
     expect(pending[0].request_id).toBe(escalationId);
-    expect(pending[0].summary).toMatch(/GET \/api\/orders/);
+    // the escalation is about the AGENT (once per agent), not the specific path
+    expect(pending[0].summary).toMatch(/requesting access/);
 
     // 3. Still challenged while the human thinks (fail closed).
     const second = await fetch(`${appUrl}/api/orders`, { headers: { "user-agent": "curl/8.4.0" } });
@@ -164,5 +165,36 @@ describe("RedTeamGo ↔ GreenTeamGo (the full suite loop)", () => {
     });
     expect(await guard(humanReq)).toBeNull(); // null = proceed to the app
     expect(green.store.listReceipts(WS)).toHaveLength(0); // no receipt noise for humans
+  });
+
+  it("paged once per agent across serverless isolates: same identity, different paths, no 409 dead-end", async () => {
+    const green = await startGreen();
+    // each Gate+escalator pair is a fresh isolate with an empty in-memory cache
+    const mkGate = () =>
+      new Gate({
+        workspace_id: WS,
+        policy: {
+          id: "pol_red", workspace_id: WS, version: 1, default_effect: "allow",
+          rules: [{ id: "r", action_type: "/api/*", tags: ["class:suspected_agent"], effect: "gate" }],
+        },
+        signing: { key_id: `${WS}_key`, privateKeyPem: green.signing.privateKeyPem, chain: green.store },
+        escalator: new GreenInboxEscalator({ apiUrl: green.url, apiKey: "sk_red" }),
+        allowStore: new InMemoryAllowStore(),
+      });
+
+    const curl = { method: "GET", path: "/api/orders", headers: { "user-agent": "curl/8.4.0" }, ip: "9.9.9.9" };
+    // isolate A escalates /api/orders
+    const a = await mkGate().handle(curl);
+    expect(a.disposition).toBe("challenge");
+    // isolate B (cold cache) sees the SAME agent on a DIFFERENT path — must not 409
+    const b = await mkGate().handle({ ...curl, path: "/api/customers" });
+    expect(b.disposition).toBe("challenge");
+    expect(b.escalation?.status).toBe("pending");
+
+    // still exactly ONE pending escalation for this agent — paged once, not twice
+    const pending = await (
+      await fetch(`${green.url}/v1/requests?status=pending`, { headers: { authorization: "Bearer sk_red" } })
+    ).json();
+    expect(pending).toHaveLength(1);
   });
 });

@@ -52,7 +52,7 @@ describe("classify — Web Bot Auth", () => {
     expect(c.signals).toContain("web_bot_auth_unverified");
   });
 
-  it("an EXPIRED signature is no claim at all — falls through to other checks", async () => {
+  it("an EXPIRED signature stays a suspected agent — the declaration is not erased (fail closed)", async () => {
     const expired = {
       ...SIGNED_HEADERS,
       "signature-input": 'sig1=("@authority");created=1;keyid="k1";tag="web-bot-auth";expires=2',
@@ -60,7 +60,36 @@ describe("classify — Web Bot Auth", () => {
       "accept-language": "en-US",
     };
     const c = await classify(req({ headers: expired }), { webBotAuthVerifier: () => true });
-    expect(c.class).toBe("human"); // browser-shaped request, dead signature
+    expect(c.class).toBe("suspected_agent"); // present-but-expired ≠ human
+    expect(c.signals).toContain("web_bot_auth_expired");
+  });
+
+  it("a non-numeric expires fails closed (treated invalid, not never-expiring)", async () => {
+    const bad = {
+      ...SIGNED_HEADERS,
+      "signature-input": 'sig1=("@authority");keyid="k1";tag="web-bot-auth";expires=abc',
+      "user-agent": "MyAgent/1.0",
+    };
+    const c = await classify(req({ headers: bad }), { webBotAuthVerifier: () => true });
+    expect(c.class).toBe("suspected_agent");
+  });
+
+  it("a truthy NON-boolean verifier result does NOT forge verified_agent", async () => {
+    for (const truthy of [1, "yes", {}, [1]]) {
+      const c = await classify(req({ headers: { ...SIGNED_HEADERS, "user-agent": "MyAgent/1.0" } }), {
+        webBotAuthVerifier: () => truthy as unknown as boolean,
+      });
+      expect(c.class).toBe("suspected_agent");
+    }
+  });
+
+  it("async verifier: resolves true → verified, resolves false → suspected, rejects → suspected", async () => {
+    const headers = { ...SIGNED_HEADERS, "user-agent": "MyAgent/1.0" };
+    expect((await classify(req({ headers }), { webBotAuthVerifier: async () => true })).class).toBe("verified_agent");
+    expect((await classify(req({ headers }), { webBotAuthVerifier: async () => false })).class).toBe("suspected_agent");
+    expect(
+      (await classify(req({ headers }), { webBotAuthVerifier: () => Promise.reject(new Error("keydir 500")) })).class,
+    ).toBe("suspected_agent");
   });
 });
 
@@ -96,6 +125,19 @@ describe("classify — declared bots", () => {
     });
     expect(c.class).toBe("declared_bot");
     expect(c.confidence).toBe("declared");
+  });
+
+  it("async ipVerifier: false → suspected, throws → declared (cannot tell), true → proof", async () => {
+    const headers = { "user-agent": "Googlebot/2.1" };
+    expect((await classify(req({ headers }), { ipVerifier: async () => false })).class).toBe("suspected_agent");
+    const cantTell = await classify(req({ headers }), {
+      ipVerifier: () => Promise.reject(new Error("dns fail")),
+    });
+    expect(cantTell.class).toBe("declared_bot");
+    expect(cantTell.confidence).toBe("declared");
+    const proof = await classify(req({ headers }), { ipVerifier: async () => true });
+    expect(proof.confidence).toBe("proof");
+    expect(proof.signals).toContain("ip_confirmed");
   });
 
   it("custom registry entries extend and override the built-ins", async () => {
@@ -153,5 +195,13 @@ describe("classify — humans", () => {
     const headers = { "user-agent": BROWSER_HEADERS["user-agent"], "sec-fetch-mode": "navigate" };
     const c = await classify(req({ headers }));
     expect(c.class).toBe("human");
+  });
+
+  it("a non-browser client with no browser evidence is suspected, not human", async () => {
+    // custom client: non-Mozilla UA, not in registry, not an automation token,
+    // no language / fetch-metadata / client-hint headers
+    const c = await classify(req({ headers: { "user-agent": "MyApp/1.0" } }));
+    expect(c.class).toBe("suspected_agent");
+    expect(c.signals).toContain("no_browser_evidence");
   });
 });

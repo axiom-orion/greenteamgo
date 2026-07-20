@@ -12,17 +12,30 @@
  * about it. Actual cryptographic verification needs a network fetch of the
  * signer's key directory, so it is injected as a `WebBotAuthVerifier`; parse
  * results without a passing verifier are treated as claims, never proof.
- * Expired signatures fail structural parsing outright (fail closed).
+ *
+ * Presence vs validity are distinct on purpose. A request that carries the
+ * signature headers has DECLARED itself an agent — even if the signature is
+ * expired or malformed. We must not let a deliberately-expired signature erase
+ * that declaration and fall through to the human default (fail-open). So parse
+ * returns `undefined` ONLY when the headers are absent; a present-but-broken
+ * claim comes back with `valid: false` so the classifier keeps it a suspected
+ * agent.
  */
 import type { InboundRequest } from "./classify.js";
 
 export interface ParsedWebBotAuth {
+  /** the headers were present (this request declared itself an agent) */
+  present: true;
+  /** structurally sound AND not expired — eligible for verification */
+  valid: boolean;
+  /** why it is invalid, when valid === false */
+  reason?: string;
   /** the Signature-Agent value — the signer's key-directory URL/domain */
   signatureAgent?: string;
   /** signature label, e.g. "sig1" */
-  label: string;
+  label?: string;
   /** covered components, e.g. ["@authority", "signature-agent"] */
-  components: string[];
+  components?: string[];
   keyid?: string;
   tag?: string;
   created?: number;
@@ -32,7 +45,8 @@ export interface ParsedWebBotAuth {
 }
 
 /** Verifies a parsed signature (fetches the key directory, checks the RFC 9421
- * signature base). Return true only on a full cryptographic pass. */
+ * signature base). Must return the boolean literal `true` — and only that — on
+ * a full cryptographic pass; the classifier accepts nothing looser. */
 export type WebBotAuthVerifier = (
   parsed: ParsedWebBotAuth,
   req: InboundRequest,
@@ -44,9 +58,10 @@ function unquote(v: string): string {
 }
 
 /**
- * Parse the three Web Bot Auth headers. Returns undefined when the request is
- * not even claiming to be signed, or when the claim is structurally broken or
- * expired — the caller treats both the same way (no proof).
+ * Parse the three Web Bot Auth headers. Returns undefined ONLY when the request
+ * carries no signature headers at all. A present-but-broken or expired claim
+ * returns `{ present: true, valid: false, reason }` so it is never mistaken for
+ * plain human traffic.
  */
 export function parseWebBotAuth(
   headers: Record<string, string | undefined>,
@@ -54,16 +69,17 @@ export function parseWebBotAuth(
 ): ParsedWebBotAuth | undefined {
   const signature = headers["signature"];
   const signatureInput = headers["signature-input"];
-  if (!signature || !signatureInput) return undefined;
+  if (!signature || !signatureInput) return undefined; // truly absent
+
+  const raw = { signature, signatureInput, signatureAgent: headers["signature-agent"] };
+  const signatureAgent = headers["signature-agent"] ? unquote(headers["signature-agent"]) : undefined;
+  const invalid = (reason: string): ParsedWebBotAuth => ({ present: true, valid: false, reason, signatureAgent, raw });
 
   // Signature-Input: label=("comp1" "comp2");param=value;param="value"
   const m = signatureInput.match(/^\s*([!#$%&'*+\-.^_`|~0-9a-zA-Z]+)=\(([^)]*)\)(.*)$/s);
-  if (!m) return undefined;
+  if (!m) return invalid("malformed Signature-Input");
   const [, label, componentsRaw, paramsRaw] = m;
-  const components = componentsRaw
-    .split(/\s+/)
-    .filter(Boolean)
-    .map(unquote);
+  const components = componentsRaw.split(/\s+/).filter(Boolean).map(unquote);
 
   const params: Record<string, string> = {};
   for (const part of paramsRaw.split(";")) {
@@ -72,24 +88,27 @@ export function parseWebBotAuth(
     params[part.slice(0, eq).trim()] = unquote(part.slice(eq + 1).trim());
   }
 
-  const created = params["created"] ? Number(params["created"]) : undefined;
-  const expires = params["expires"] ? Number(params["expires"]) : undefined;
-  if (expires !== undefined && Number.isFinite(expires) && nowMs / 1000 > expires) {
-    return undefined; // expired signature = no claim at all
+  const created = params["created"] !== undefined ? Number(params["created"]) : undefined;
+  const expires = params["expires"] !== undefined ? Number(params["expires"]) : undefined;
+
+  if (expires !== undefined) {
+    // A present-but-non-numeric expires must fail closed, not be read as
+    // "never expires". Number("abc") === NaN, isFinite(NaN) === false.
+    if (!Number.isFinite(expires)) return invalid("non-numeric expires");
+    if (nowMs / 1000 > expires) return invalid("expired signature");
   }
+  if (created !== undefined && !Number.isFinite(created)) return invalid("non-numeric created");
 
   return {
-    signatureAgent: headers["signature-agent"] ? unquote(headers["signature-agent"]) : undefined,
+    present: true,
+    valid: true,
+    signatureAgent,
     label,
     components,
     keyid: params["keyid"],
     tag: params["tag"],
     created,
     expires,
-    raw: {
-      signature,
-      signatureInput,
-      signatureAgent: headers["signature-agent"],
-    },
+    raw,
   };
 }

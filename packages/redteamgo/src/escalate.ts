@@ -28,6 +28,10 @@ export interface EscalationRequest {
 export interface Escalation {
   request_id: string;
   status: EscalationStatus;
+  /** how the resolving decision was made, once known: "app"/"biometric" = a
+   * human tapped it; "auto"/"policy" = Green auto-decided or the request
+   * expired. Lets the gate seal the truthful decider on the enforcement side. */
+  decider_method?: "app" | "biometric" | "policy" | "auto";
 }
 
 /** Pluggable escalation transport. GreenInboxEscalator is the real one;
@@ -36,7 +40,7 @@ export interface Escalator {
   /** Create (or return the existing) escalation for this identity. */
   escalate(req: EscalationRequest): Promise<Escalation>;
   /** Lazily re-check a pending escalation's status. */
-  check(requestId: string): Promise<EscalationStatus>;
+  check(requestId: string): Promise<Escalation>;
 }
 
 /** Standing decisions produced by resolved escalations. */
@@ -80,6 +84,14 @@ export interface GreenInboxEscalatorOptions {
   apiKey: string;
   /** seconds before an unanswered escalation expires (expiry = deny) */
   timeoutS?: number;
+  /**
+   * Escalation window in seconds. One Green request is opened per identity per
+   * window; a new window (e.g. after the standing decision lapses) opens a
+   * fresh request so the human is re-paged instead of replaying a stale
+   * answer forever. Defaults to `timeoutS`.
+   */
+  windowS?: number;
+  now?: () => number;
   fetchFn?: typeof fetch;
 }
 
@@ -87,13 +99,23 @@ export interface GreenInboxEscalatorOptions {
  * Escalates through GreenTeamGo's inbox API: POST /v1/requests with
  * mode:"async", then lazy GET /v1/requests/:id checks. An expired request is
  * a deny — Green's fail-closed expiry does the bookkeeping for us.
+ *
+ * The POST body is a pure function of (identity, window): constant summary and
+ * detail, identity-only actor, no per-request path/evidence. That matters
+ * because Green's idempotency is content-fingerprinted — a body that varied by
+ * path would 409 on the same identity's next path across a fresh serverless
+ * isolate (whose in-memory cache is empty), dead-ending the escalation. The
+ * escalation is about the AGENT ("this thing wants in"), not the individual
+ * request, which is exactly the once-per-agent contract.
  */
 export class GreenInboxEscalator implements Escalator {
   private fetchFn: typeof fetch;
-  private byIdentity = new Map<string, Escalation>();
+  private now: () => number;
+  private byKey = new Map<string, Escalation>(); // key: `${identity}:${epoch}`
 
   constructor(private opts: GreenInboxEscalatorOptions) {
     this.fetchFn = opts.fetchFn ?? fetch;
+    this.now = opts.now ?? (() => Date.now());
   }
 
   private headers(): Record<string, string> {
@@ -103,49 +125,65 @@ export class GreenInboxEscalator implements Escalator {
     };
   }
 
+  private epoch(): number {
+    const windowS = this.opts.windowS ?? this.opts.timeoutS ?? 86400;
+    return Math.floor(this.now() / (windowS * 1000));
+  }
+
   async escalate(req: EscalationRequest): Promise<Escalation> {
-    const existing = this.byIdentity.get(req.identity);
+    const epoch = this.epoch();
+    const cacheKey = `${req.identity}:${epoch}`;
+    const existing = this.byKey.get(cacheKey);
     if (existing) {
-      if (existing.status === "pending") {
-        existing.status = await this.check(existing.request_id);
-      }
+      if (existing.status === "pending") return this.check(existing.request_id);
       return existing;
     }
     const res = await this.fetchFn(`${this.opts.apiUrl}/v1/requests`, {
       method: "POST",
-      headers: { ...this.headers(), "idempotency-key": `red:${req.identity}` },
+      // idempotency scoped to the window: a new window opens a new request
+      headers: { ...this.headers(), "idempotency-key": `red:${req.identity}:${epoch}` },
       body: JSON.stringify({
         action_type: "red:access_request",
-        summary: `Unknown agent wants ${req.method} ${req.path} — allow?`,
-        detail: `identity: ${req.identity}\nsignals: ${req.signals.join(", ")}`,
-        payload: JSON.stringify(req.evidence),
+        // stable per (identity, window) so cross-isolate creates replay, not 409
+        summary: `Agent "${req.identity}" is requesting access — allow?`,
+        detail: `identity: ${req.identity}`,
         risk: "high",
         timeout_s: this.opts.timeoutS ?? 86400,
         mode: "async",
-        // the receipt for the human's decision should attribute the OBSERVED
-        // foreign agent, not Red's own api key
-        actor: { type: "observed", id: req.identity, evidence: req.evidence },
+        actor: { type: "observed", id: req.identity },
       }),
     });
     if (!res.ok) throw new Error(`escalation create failed: ${res.status}`);
-    const body = (await res.json()) as { request_id: string; status: string };
+    const body = (await res.json()) as { request_id: string; status: string; receipt?: Receiptish };
     const esc: Escalation = {
       request_id: body.request_id,
       status: toEscalationStatus(body.status),
+      decider_method: deciderOf(body),
     };
-    this.byIdentity.set(req.identity, esc);
+    this.byKey.set(cacheKey, esc);
     return esc;
   }
 
-  async check(requestId: string): Promise<EscalationStatus> {
+  async check(requestId: string): Promise<Escalation> {
     const res = await this.fetchFn(
       `${this.opts.apiUrl}/v1/requests/${encodeURIComponent(requestId)}`,
       { headers: this.headers() },
     );
-    if (!res.ok) return "pending"; // cannot tell → stay challenged (fail closed)
-    const body = (await res.json()) as { status: string };
-    return toEscalationStatus(body.status);
+    // cannot tell → stay challenged (fail closed)
+    if (!res.ok) return { request_id: requestId, status: "pending" };
+    const body = (await res.json()) as { status: string; receipt?: Receiptish };
+    return {
+      request_id: requestId,
+      status: toEscalationStatus(body.status),
+      decider_method: deciderOf(body),
+    };
   }
+}
+
+type Receiptish = { decider?: { method?: "app" | "biometric" | "policy" | "auto" } };
+
+function deciderOf(body: { receipt?: Receiptish }): Escalation["decider_method"] {
+  return body.receipt?.decider?.method;
 }
 
 function toEscalationStatus(green: string): EscalationStatus {

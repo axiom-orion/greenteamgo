@@ -133,12 +133,21 @@ export class Gate {
       return await this.decide(req, cls);
     } catch (err) {
       // Pipeline failure on agent traffic: challenge, never allow-by-crash.
-      const result: GateResult = {
-        disposition: cls.class === "human" ? "allow" : "challenge",
-        classification: cls,
-        reason: `gate error (fail closed): ${(err as Error).message}`,
-      };
-      return this.applyMonitor(result);
+      // Humans still pass (they never reach sealing). For an agent, the
+      // challenge is itself an enforcement decision, so best-effort seal a
+      // receipt for it — swallowing only a second failure in the seal path so
+      // a broken chain store cannot turn fail-closed into an unhandled throw.
+      const reason = `gate error (fail closed): ${(err as Error).message}`;
+      if (cls.class === "human") {
+        return { disposition: "allow", classification: cls, reason };
+      }
+      let receipt: Receipt | undefined;
+      try {
+        receipt = this.maybeSeal(req, cls, "challenge", { verdict: "challenge", method: "auto", reason });
+      } catch {
+        /* chain store itself is down — still fail closed, just without the receipt */
+      }
+      return this.applyMonitor({ disposition: "challenge", classification: cls, receipt, reason });
     }
   }
 
@@ -148,7 +157,7 @@ export class Gate {
       return { disposition: "allow", classification: cls, reason: "human traffic passes" };
     }
 
-    const identity = this.identityOf(req, cls);
+    const { id: identity, standingAllowOk } = this.identityOf(req, cls);
 
     // A human already ruled on this agent — honor the standing decision.
     const standing = this.allowStore.get(identity);
@@ -177,7 +186,7 @@ export class Gate {
     });
 
     if (decision.effect === "gate") {
-      return this.applyMonitor(await this.escalate(req, cls, identity, decision));
+      return this.applyMonitor(await this.escalate(req, cls, identity, standingAllowOk, decision));
     }
 
     // allow / deny / challenge: machine-decided, one shared mapping (the same
@@ -207,6 +216,7 @@ export class Gate {
     req: InboundRequest,
     cls: Classification,
     identity: string,
+    standingAllowOk: boolean,
     decision: PolicyDecision,
   ): Promise<GateResult> {
     if (!this.opts.escalator) {
@@ -249,17 +259,29 @@ export class Gate {
     }
 
     const approved = escalation.status === "approved";
-    this.allowStore.put(identity, {
-      effect: approved ? "allow" : "block",
-      expires_at: this.now() + (this.opts.standing_ttl_s ?? 86400) * 1000,
-      source_request_id: escalation.request_id,
-    });
+    // Store the standing decision. A block is always safe to store (blocking a
+    // forgeable identity fails safe). An ALLOW is only stored when the identity
+    // is strongly bound (verified signature / IP-confirmed / real client IP);
+    // for a purely UA-derived identity we do NOT persist a replayable allow —
+    // it would let any spoofer of that UA inherit it. Such agents re-escalate,
+    // deduped to one page per window by the escalator.
+    if (!approved || standingAllowOk) {
+      this.allowStore.put(identity, {
+        effect: approved ? "allow" : "block",
+        expires_at: this.now() + (this.opts.standing_ttl_s ?? 86400) * 1000,
+        source_request_id: escalation.request_id,
+      });
+    }
+    // Attribute the receipt truthfully: a human tap (app/biometric) vs Green
+    // auto-deciding or the escalation expiring (auto). Do not stamp "app" on a
+    // machine decision.
+    const humanDecided = escalation.decider_method === "app" || escalation.decider_method === "biometric";
     const reason = approved
-      ? "human approved this agent (standing allow created)"
+      ? `human approved this agent${standingAllowOk ? " (standing allow created)" : " (per-window; identity too weak to persist)"}`
       : "human denied this agent (standing block created)";
     const receipt = this.maybeSeal(req, cls, approved ? "allow" : "block", {
       verdict: approved ? "approve" : "deny",
-      method: "app",
+      method: humanDecided ? "app" : "auto",
       deciderId: escalation.request_id,
       reason,
       policy: decision,
@@ -274,11 +296,26 @@ export class Gate {
     };
   }
 
-  /** Stable identity for standing decisions and escalation dedup. */
-  private identityOf(req: InboundRequest, cls: Classification): string {
-    if (cls.agent_id) return cls.agent_id;
-    if (req.ip) return `ip:${req.ip}`;
-    return `ua:${req.headers["user-agent"] ?? "unknown"}`;
+  /**
+   * Standing-decision / escalation identity, namespaced by PROVENANCE so an
+   * attacker-controlled value can never collide with a trusted one:
+   *   - verified:<signer>   cryptographically bound (Web Bot Auth verified)
+   *   - agent:<id>          declared bot whose IP an ipVerifier CONFIRMED
+   *   - ip:<addr>           anything else, when we have a source IP
+   *   - ua:<ua>             last resort, no IP available
+   * `standingAllowOk` is true only for the two strong forms and for ip:<addr>
+   * (bound to a network path); a bare `ua:` identity is fully forgeable, so an
+   * ALLOW is never persisted against it (a block still may be).
+   */
+  private identityOf(req: InboundRequest, cls: Classification): { id: string; standingAllowOk: boolean } {
+    if (cls.class === "verified_agent" && cls.agent_id) {
+      return { id: `verified:${cls.agent_id}`, standingAllowOk: true };
+    }
+    if (cls.class === "declared_bot" && cls.agent_id && cls.signals.includes("ip_confirmed")) {
+      return { id: `agent:${cls.agent_id}`, standingAllowOk: true };
+    }
+    if (req.ip) return { id: `ip:${req.ip}`, standingAllowOk: true };
+    return { id: `ua:${req.headers["user-agent"] ?? "unknown"}`, standingAllowOk: false };
   }
 
   private maybeSeal(
@@ -300,19 +337,31 @@ export class Gate {
     const nowIso = new Date(this.now()).toISOString();
     const status =
       disposition === "allow" ? "approved" : disposition === "block" ? "blocked" : "challenged";
+    // In monitor mode the request was let through despite this verdict; record
+    // that so the receipt does not read as a block that was actually enforced.
+    const monitored = this.opts.monitor === true && disposition !== "allow";
     const receipt = seal(
       {
         request_id: `red_${cryptoRandomId()}`,
         workspace_id: this.opts.workspace_id,
-        actor: { type: "observed", id: cls.agent_id, evidence: { ...cls.evidence, signals: cls.signals } },
-        action_type: `${req.method.toUpperCase()} ${req.path}`,
+        // actor.id always identifies the observed subject (the standing/
+        // escalation identity when there is no registry/signature id), so
+        // receipts correlate with the decision that produced them.
+        actor: {
+          type: "observed",
+          id: cls.agent_id ?? this.identityOf(req, cls).id,
+          evidence: { ...cls.evidence, signals: cls.signals, ...(monitored ? { monitor: true } : {}) },
+        },
+        // action_type is exactly what the policy evaluated (the path); the
+        // method lives in the tags/evidence, so the sealed decision reproduces.
+        action_type: req.path,
         verdict: d.verdict,
         status,
         risk: d.policy?.risk ?? CLASS_RISK[cls.class],
         policy_id: d.policy?.policy_id,
         policy_version: d.policy?.policy_version,
         decider: { method: d.method, id: d.deciderId },
-        reason: d.reason,
+        reason: monitored ? `${d.reason ?? ""} (monitor: allowed through)`.trim() : d.reason,
         created_at: nowIso,
         decided_at: nowIso,
       },

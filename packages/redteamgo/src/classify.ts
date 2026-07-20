@@ -3,15 +3,21 @@
  *
  * Four classes, checked in order of evidence strength (first match wins):
  *   1. verified_agent — Web Bot Auth signature that actually VERIFIES via the
- *      injected verifier. Presence of signature headers alone proves nothing:
- *      unverifiable/invalid signatures classify as suspected, never verified.
- *   2. declared_bot — User-Agent matches the known-agent registry. If an
- *      ipVerifier is configured and says the IP is NOT the operator's, the
- *      claim is treated as spoofed → suspected.
- *   3. suspected_agent — honeypot path hit, automation-tool UA, or a request
- *      shaped like a script pretending to be a browser.
- *   4. human — the default. RedTeamGo v1 never gates humans; getting this
- *      wrong in the strict direction is worse than letting a clever bot pass.
+ *      injected verifier (which must return the boolean `true`, nothing
+ *      looser). Presence of signature headers alone proves nothing:
+ *      unverifiable/invalid/expired signatures classify as suspected, never
+ *      verified.
+ *   2. declared_bot — User-Agent matches the known-agent registry. This is a
+ *      CLAIM (the UA is attacker-controlled), so downstream trust decisions
+ *      (see gate.ts identityOf) never grant a type-level standing allow to a
+ *      declared bot that an ipVerifier has not positively confirmed.
+ *   3. suspected_agent — honeypot path hit, automation-tool UA, a browser UA
+ *      with none of the headers real browsers send, or any client that is not
+ *      a browser and did not prove itself.
+ *   4. human — the default, but only for requests that look like a browser.
+ *      Getting this wrong in the strict direction (blocking a human) is worse
+ *      than letting a clever bot through, so the browser test is generous; but
+ *      a non-browser client with no browser signals is not a "human".
  *
  * This module is pure and synchronous except for the two injected verifiers;
  * it does no network I/O of its own.
@@ -82,8 +88,10 @@ export interface ClassifyOptions {
 }
 
 function pathMatches(pattern: string, path: string): boolean {
-  if (pattern.endsWith("*")) return path.startsWith(pattern.slice(0, -1));
-  return pattern === path;
+  const pat = pattern.toLowerCase();
+  const p = path.toLowerCase();
+  if (pat.endsWith("*")) return p.startsWith(pat.slice(0, -1));
+  return pat === p;
 }
 
 function findKnownAgent(ua: string, extra?: KnownAgent[]): KnownAgent | undefined {
@@ -97,13 +105,27 @@ function findKnownAgent(ua: string, extra?: KnownAgent[]): KnownAgent | undefine
   return undefined;
 }
 
-/** Looks like a script wearing a browser UA: browser-ish UA but none of the
- * headers real browsers always send. Deliberately conservative — both
- * accept-language AND every sec-fetch-* header must be absent. */
-function missingBrowserHeaders(req: InboundRequest): boolean {
+function automationMarker(ua: string): string | undefined {
+  const uaLower = ua.toLowerCase();
+  return AUTOMATION_UA_TOKENS.find((t) => uaLower.includes(t));
+}
+
+/** True when the request carries evidence a real browser would send: a
+ * Mozilla-token UA, or any of the fetch-metadata / language / client-hint
+ * headers browsers attach. Absence of ALL of these means "not a browser". */
+function looksLikeBrowser(req: InboundRequest): boolean {
   const ua = (req.headers["user-agent"] ?? "").toLowerCase();
-  const claimsBrowser = ua.includes("mozilla/");
-  if (!claimsBrowser) return false;
+  if (ua.includes("mozilla/")) return true;
+  if (req.headers["accept-language"] !== undefined) return true;
+  return Object.keys(req.headers).some((h) => h.startsWith("sec-fetch-") || h.startsWith("sec-ch-ua"));
+}
+
+/** Looks like a script wearing a browser UA: claims Mozilla but sends none of
+ * the headers real browsers always send. Deliberately conservative — both
+ * accept-language AND every sec-fetch-* header must be absent. */
+function browserUaWithoutBrowserHeaders(req: InboundRequest): boolean {
+  const ua = (req.headers["user-agent"] ?? "").toLowerCase();
+  if (!ua.includes("mozilla/")) return false;
   const hasLang = req.headers["accept-language"] !== undefined;
   const hasSecFetch = Object.keys(req.headers).some((h) => h.startsWith("sec-fetch-"));
   return !hasLang && !hasSecFetch;
@@ -119,15 +141,17 @@ export async function classify(
   // 1. Web Bot Auth — cryptographic proof beats everything, but only if it
   // actually verifies. A signature we cannot verify is a claim, not proof.
   const wba = parseWebBotAuth(req.headers);
-  if (wba) {
+  if (wba && wba.valid) {
     if (opts.webBotAuthVerifier) {
-      let ok = false;
+      let ok: unknown = false;
       try {
         ok = await opts.webBotAuthVerifier(wba, req);
       } catch {
         ok = false; // verifier errors are non-proof, never trust-by-crash
       }
-      if (ok) {
+      // Strict: only the boolean `true` grants the highest trust class. A
+      // truthy non-boolean (a key object, a JWK, a non-empty string) does not.
+      if (ok === true) {
         return {
           class: "verified_agent",
           agent_id: wba.signatureAgent,
@@ -140,8 +164,9 @@ export async function classify(
     } else {
       signals.push("web_bot_auth_unverified");
     }
-    // Signed-but-unproven falls through; the signature headers themselves are
-    // an agent declaration, so at minimum this is not plain human traffic.
+  } else if (wba) {
+    // present but expired/malformed: still an agent declaration, not a human
+    signals.push(`web_bot_auth_${wba.reason === "expired signature" ? "expired" : "malformed"}`);
   }
 
   // 2. Declared bot — UA registry match, optionally IP-confirmed.
@@ -188,7 +213,7 @@ export async function classify(
       agent_id: wba.signatureAgent,
       confidence: "heuristic",
       signals,
-      evidence: { signature_agent: wba.signatureAgent, keyid: wba.keyid, ua },
+      evidence: { signature_agent: wba.signatureAgent, keyid: wba.keyid, ua, wba_reason: wba.reason },
     };
   }
 
@@ -198,25 +223,36 @@ export async function classify(
       class: "suspected_agent",
       confidence: "heuristic",
       signals: [...signals, "honeypot_hit"],
-      evidence: { path: req.path, ua },
+      evidence: { path: req.path, ua, ip: req.ip },
     };
   }
-  const uaLower = ua.toLowerCase();
-  const automationToken = AUTOMATION_UA_TOKENS.find((t) => uaLower.includes(t));
+  const automationToken = automationMarker(ua);
   if (automationToken || ua === "") {
     return {
       class: "suspected_agent",
       confidence: "heuristic",
       signals: [...signals, ua === "" ? "empty_ua" : "automation_ua"],
-      evidence: { ua, token: automationToken },
+      evidence: { ua, token: automationToken, ip: req.ip },
     };
   }
-  if (missingBrowserHeaders(req)) {
+  if (browserUaWithoutBrowserHeaders(req)) {
     return {
       class: "suspected_agent",
       confidence: "heuristic",
       signals: [...signals, "browser_ua_without_browser_headers"],
-      evidence: { ua },
+      evidence: { ua, ip: req.ip },
+    };
+  }
+  // A client that shows NO browser evidence at all (non-Mozilla UA, no
+  // language, no fetch-metadata / client-hint headers) is some bespoke client,
+  // not a human browser. Classify suspected so policy can target it; default
+  // policy still lets it pass, so no human is ever blocked by this.
+  if (!looksLikeBrowser(req)) {
+    return {
+      class: "suspected_agent",
+      confidence: "heuristic",
+      signals: [...signals, "no_browser_evidence"],
+      evidence: { ua, ip: req.ip },
     };
   }
 
