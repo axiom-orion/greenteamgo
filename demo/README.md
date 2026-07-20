@@ -50,8 +50,10 @@ Codex calls `request_approval` → the request appears at http://localhost:4000/
 Every decision is in the workspace chain. Export and verify without trusting the server:
 ```
 curl -s http://localhost:4000/v1/receipts -H "authorization: Bearer gtg_demo_agent_key" > receipts.json
-curl -s http://localhost:4000/v1/keys     -H "authorization: Bearer gtg_demo_agent_key" > keys.json
-npx greenteamgo-verify receipts.json keys.json
+# /v1/keys returns {key_id, publicKeyPem}; the verifier wants a {key_id: pem} map:
+curl -s http://localhost:4000/v1/keys -H "authorization: Bearer gtg_demo_agent_key" \
+  | python -c "import sys,json;k=json.load(sys.stdin);print(json.dumps({k['key_id']:k['publicKeyPem']}))" > keys.json
+node packages/core/dist/cli.js receipts.json keys.json
 # OK: N receipt(s) verified — chain intact, signatures valid.
 ```
 
