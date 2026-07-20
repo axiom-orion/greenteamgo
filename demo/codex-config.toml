@@ -1,0 +1,16 @@
+# GreenCodex — wire greenteamgo into Codex.
+#
+# Append this block to your Codex config at  ~/.codex/config.toml
+# (create the file if it doesn't exist: mkdir -p ~/.codex).
+#
+# It registers greenteamgo as an MCP server, so Codex can call `request_approval`
+# before doing anything risky. Point it at the running GreenTeamGo console
+# (start it with:  npm -w @vorionsys/greenteamgo-console start).
+
+[mcp_servers.greenteamgo]
+command = "node"
+args = ["D:/voriongit/greenteamgo/packages/mcp/dist/bin.js"]
+
+[mcp_servers.greenteamgo.env]
+GREENTEAMGO_API_URL = "http://localhost:4000"
+GREENTEAMGO_API_KEY = "gtg_demo_agent_key"

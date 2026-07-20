@@ -26,6 +26,8 @@ import {
   type ResolvedKey,
 } from "@vorionsys/greenteamgo-api";
 
+import { summarizeRisk } from "./risk-summary.js";
+
 const PORT = Number(process.env.PORT ?? 4000);
 const WS = "ws_demo";
 const AGENT_KEY = process.env.GREENTEAMGO_AGENT_KEY ?? "gtg_demo_agent_key";
@@ -84,7 +86,24 @@ function uiView(r: RequestRecord) {
     decided_at: r.decided_at,
     receipt: r.receipt,
     receipt_verified: r.receipt ? verifyReceipt(r.receipt, signing.publicKeyPem).ok : undefined,
+    ai_risk_summary: summaryCache.get(r.request_id),
   };
+}
+
+// Cache of GPT risk summaries by request_id, generated once per request.
+const summaryCache = new Map<string, string>();
+const summaryInflight = new Set<string>();
+
+function ensureRiskSummary(r: RequestRecord): void {
+  if (summaryCache.has(r.request_id) || summaryInflight.has(r.request_id)) return;
+  summaryInflight.add(r.request_id);
+  void summarizeRisk({
+    action_type: r.action_type, summary: r.summary, detail: r.detail,
+    payload: r.payload, risk: r.risk,
+  }).then((s) => {
+    if (s) summaryCache.set(r.request_id, s);
+    summaryInflight.delete(r.request_id);
+  });
 }
 
 const server = createServer(async (req, res) => {
@@ -97,7 +116,9 @@ const server = createServer(async (req, res) => {
 
     // Keyless UI endpoints (local single-user demo; the server holds the app key).
     if (method === "GET" && url.pathname === "/ui/pending") {
-      return json(res, 200, service.listPending(appKey).map(uiView));
+      const pending = service.listPending(appKey);
+      pending.forEach(ensureRiskSummary); // kick off GPT summary on first sight
+      return json(res, 200, pending.map(uiView));
     }
     if (method === "GET" && url.pathname === "/ui/history") {
       const decided = [
