@@ -1,0 +1,582 @@
+[
+  {
+    "v": 1,
+    "request_id": "req_a8e18f8d-8640-49ee-b01d-0ced6c811c7a",
+    "workspace_id": "ws_demo",
+    "actor": {
+      "type": "agent_key",
+      "id": "demo_agent"
+    },
+    "action_type": "file_read",
+    "verdict": "approve",
+    "status": "approved",
+    "risk": "low",
+    "policy_id": "pol_demo",
+    "policy_version": 1,
+    "decider": {
+      "method": "policy",
+      "id": "pol_demo"
+    },
+    "reason": "auto-decided by policy pol_demo v1",
+    "created_at": "2026-07-21T08:36:03.850Z",
+    "decided_at": "2026-07-21T08:36:03.850Z",
+    "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "signer": {
+      "key_id": "ws_demo_key",
+      "alg": "ed25519"
+    },
+    "receipt_hash": "e3f9383295e73dd106667ab8deda6c136465618f37d09487f50806fee0fd6fdd",
+    "sig": "PfknD+yknoNoNcAsYCyyn8jBDdG0yuUAFf4RymAujELweb43x98nAqrwZRiMrmt3nPlqRjjQ3fiYez1K1Zd2CA=="
+  },
+  {
+    "v": 1,
+    "request_id": "req_6b006e60-90c7-421f-bda0-f72f2530799c",
+    "workspace_id": "ws_demo",
+    "actor": {
+      "type": "agent_key",
+      "id": "demo_agent"
+    },
+    "action_type": "file_read",
+    "verdict": "approve",
+    "status": "approved",
+    "risk": "low",
+    "policy_id": "pol_demo",
+    "policy_version": 1,
+    "decider": {
+      "method": "policy",
+      "id": "pol_demo"
+    },
+    "reason": "auto-decided by policy pol_demo v1",
+    "created_at": "2026-07-21T08:36:03.860Z",
+    "decided_at": "2026-07-21T08:36:03.860Z",
+    "prev_hash": "e3f9383295e73dd106667ab8deda6c136465618f37d09487f50806fee0fd6fdd",
+    "signer": {
+      "key_id": "ws_demo_key",
+      "alg": "ed25519"
+    },
+    "receipt_hash": "06597ffdcfc849eb53e0e2f8c03f86f69d2df860707af58eab7f5e4d81ad4c67",
+    "sig": "RaXKtY6JprqTMHZDW98LFP29XrQ2AWgvGQlBMSjiUWFPTEeMT72ji005PYvjgakbj+6cEBRHDLiiUneFzWm1Aw=="
+  },
+  {
+    "v": 1,
+    "request_id": "req_4ed0c3be-5340-4582-a054-2020c2f6122c",
+    "workspace_id": "ws_demo",
+    "actor": {
+      "type": "agent_key",
+      "id": "demo_agent"
+    },
+    "action_type": "file_read",
+    "verdict": "approve",
+    "status": "approved",
+    "risk": "low",
+    "policy_id": "pol_demo",
+    "policy_version": 1,
+    "decider": {
+      "method": "policy",
+      "id": "pol_demo"
+    },
+    "reason": "auto-decided by policy pol_demo v1",
+    "created_at": "2026-07-21T08:36:03.868Z",
+    "decided_at": "2026-07-21T08:36:03.868Z",
+    "prev_hash": "06597ffdcfc849eb53e0e2f8c03f86f69d2df860707af58eab7f5e4d81ad4c67",
+    "signer": {
+      "key_id": "ws_demo_key",
+      "alg": "ed25519"
+    },
+    "receipt_hash": "66cf0b88cf81c780ddc70199348be999cf44cbc3be31196a2b21ff6cfcb225fd",
+    "sig": "6adNHOxBPmJQ7MTl6X7eCamPHoX/ODtCbe+VUzHcTS7vhdS7HyCENpu6S4TrdhZ2WJI+JSXPws5IoKnU4lYZAg=="
+  },
+  {
+    "v": 1,
+    "request_id": "req_27d4da7b-9f3a-483e-b49e-456531d51a48",
+    "workspace_id": "ws_demo",
+    "actor": {
+      "type": "agent_key",
+      "id": "demo_agent"
+    },
+    "action_type": "file_read",
+    "verdict": "approve",
+    "status": "approved",
+    "risk": "low",
+    "policy_id": "pol_demo",
+    "policy_version": 1,
+    "decider": {
+      "method": "policy",
+      "id": "pol_demo"
+    },
+    "reason": "auto-decided by policy pol_demo v1",
+    "created_at": "2026-07-21T08:36:03.875Z",
+    "decided_at": "2026-07-21T08:36:03.875Z",
+    "prev_hash": "66cf0b88cf81c780ddc70199348be999cf44cbc3be31196a2b21ff6cfcb225fd",
+    "signer": {
+      "key_id": "ws_demo_key",
+      "alg": "ed25519"
+    },
+    "receipt_hash": "9c7aac38127e1b9c7ca8fd053f0499cadaaf989a1f6d3708338cdc9d5f1e7a6b",
+    "sig": "GwLapb54t2Bb8NyyP1xMyhRAIWRIUPDTxsRrRmANTwUnGaLgvqAW7TfTWFMbsK+KLaTdZfAt9i+fGq48MGz8BQ=="
+  },
+  {
+    "v": 1,
+    "request_id": "req_264f799f-12ae-4d60-b118-241a656e1057",
+    "workspace_id": "ws_demo",
+    "actor": {
+      "type": "agent_key",
+      "id": "demo_agent"
+    },
+    "action_type": "file_list",
+    "verdict": "approve",
+    "status": "approved",
+    "risk": "low",
+    "policy_id": "pol_demo",
+    "policy_version": 1,
+    "decider": {
+      "method": "policy",
+      "id": "pol_demo"
+    },
+    "reason": "auto-decided by policy pol_demo v1",
+    "created_at": "2026-07-21T08:36:03.883Z",
+    "decided_at": "2026-07-21T08:36:03.883Z",
+    "prev_hash": "9c7aac38127e1b9c7ca8fd053f0499cadaaf989a1f6d3708338cdc9d5f1e7a6b",
+    "signer": {
+      "key_id": "ws_demo_key",
+      "alg": "ed25519"
+    },
+    "receipt_hash": "1e68988d16a9d8ea1da6cbe1a66c9e825739b1cb6a7bd5a47be5426729642678",
+    "sig": "IBXSY6clRYh4YZPN4Nwj5Tx2PMvA/4Naa+C+hxbYQneZWGiFUTqy6qlqjf0BlWglQrcyF0p17dN9RPc2u2ddDA=="
+  },
+  {
+    "v": 1,
+    "request_id": "req_634d5172-6728-477b-afd7-8b9f5df53030",
+    "workspace_id": "ws_demo",
+    "actor": {
+      "type": "agent_key",
+      "id": "demo_agent"
+    },
+    "action_type": "file_read",
+    "verdict": "approve",
+    "status": "approved",
+    "risk": "low",
+    "policy_id": "pol_demo",
+    "policy_version": 1,
+    "decider": {
+      "method": "policy",
+      "id": "pol_demo"
+    },
+    "reason": "auto-decided by policy pol_demo v1",
+    "created_at": "2026-07-21T08:36:03.888Z",
+    "decided_at": "2026-07-21T08:36:03.888Z",
+    "prev_hash": "1e68988d16a9d8ea1da6cbe1a66c9e825739b1cb6a7bd5a47be5426729642678",
+    "signer": {
+      "key_id": "ws_demo_key",
+      "alg": "ed25519"
+    },
+    "receipt_hash": "85ee47d955c68578e7ea3e02b28b730f90814da16f152fecb6dcb2a165d59f98",
+    "sig": "J/XYa5pJcM43L5DYOonCoeCOcqQFpJfU8gvtcUFrD+h2tF5EfiKi+ukm+3P8E9/gaxF4jp4XPZeRPA9Kz+pJAg=="
+  },
+  {
+    "v": 1,
+    "request_id": "req_a1e45b76-1ba8-4898-9b92-fb9c6401c37e",
+    "workspace_id": "ws_demo",
+    "actor": {
+      "type": "agent_key",
+      "id": "demo_agent"
+    },
+    "action_type": "file_read",
+    "verdict": "approve",
+    "status": "approved",
+    "risk": "low",
+    "policy_id": "pol_demo",
+    "policy_version": 1,
+    "decider": {
+      "method": "policy",
+      "id": "pol_demo"
+    },
+    "reason": "auto-decided by policy pol_demo v1",
+    "created_at": "2026-07-21T08:36:03.893Z",
+    "decided_at": "2026-07-21T08:36:03.893Z",
+    "prev_hash": "85ee47d955c68578e7ea3e02b28b730f90814da16f152fecb6dcb2a165d59f98",
+    "signer": {
+      "key_id": "ws_demo_key",
+      "alg": "ed25519"
+    },
+    "receipt_hash": "b4d194e4887671836ded234044575667158a235ed5ea06e58991613d7d72c0e0",
+    "sig": "ZK4O3GpeapPsvx4shwwRGBLXG/t3FTTZ4+ZOjz4CVjYcdUQpiOoXGvFI4ABXEMrCmQ+kMzZeP7OZhrv7S17GBg=="
+  },
+  {
+    "v": 1,
+    "request_id": "req_50b52751-df2d-4672-8464-3375c8ce2593",
+    "workspace_id": "ws_demo",
+    "actor": {
+      "type": "agent_key",
+      "id": "demo_agent"
+    },
+    "action_type": "file_list",
+    "verdict": "approve",
+    "status": "approved",
+    "risk": "low",
+    "policy_id": "pol_demo",
+    "policy_version": 1,
+    "decider": {
+      "method": "policy",
+      "id": "pol_demo"
+    },
+    "reason": "auto-decided by policy pol_demo v1",
+    "created_at": "2026-07-21T08:36:03.897Z",
+    "decided_at": "2026-07-21T08:36:03.897Z",
+    "prev_hash": "b4d194e4887671836ded234044575667158a235ed5ea06e58991613d7d72c0e0",
+    "signer": {
+      "key_id": "ws_demo_key",
+      "alg": "ed25519"
+    },
+    "receipt_hash": "65fc9138d709650a29094e0a155a564863da62b29d658523f53aba118340b767",
+    "sig": "+WDudAwUhcGCNsZ/ymT1QsPVT8TSdw/WV0ckemUL0mvx35nFsDKKRN6ZoM0vyudKGmn0k/PLxI84T7kqXRB4AQ=="
+  },
+  {
+    "v": 1,
+    "request_id": "req_b4ab2bfb-a00b-4418-a3ca-6c59261bfb8a",
+    "workspace_id": "ws_demo",
+    "actor": {
+      "type": "agent_key",
+      "id": "demo_agent"
+    },
+    "action_type": "file_read",
+    "verdict": "approve",
+    "status": "approved",
+    "risk": "low",
+    "policy_id": "pol_demo",
+    "policy_version": 1,
+    "decider": {
+      "method": "policy",
+      "id": "pol_demo"
+    },
+    "reason": "auto-decided by policy pol_demo v1",
+    "created_at": "2026-07-21T08:36:03.903Z",
+    "decided_at": "2026-07-21T08:36:03.903Z",
+    "prev_hash": "65fc9138d709650a29094e0a155a564863da62b29d658523f53aba118340b767",
+    "signer": {
+      "key_id": "ws_demo_key",
+      "alg": "ed25519"
+    },
+    "receipt_hash": "288ddfff72b6331255c0724c3003c222d9b3c4b0cbab3bfdc3b552db683b658d",
+    "sig": "AaEtYxCsdb3SHjcj/KbQI5w118Oe5S7/ff/GLUWp22HuVw2VdOIUk13oWkzPDHm0OzjqCw6iwUurj0+AyeDXCA=="
+  },
+  {
+    "v": 1,
+    "request_id": "req_23e11705-0960-493d-9b4c-4ff50b7b39e5",
+    "workspace_id": "ws_demo",
+    "actor": {
+      "type": "agent_key",
+      "id": "demo_agent"
+    },
+    "action_type": "file_read",
+    "verdict": "approve",
+    "status": "approved",
+    "risk": "low",
+    "policy_id": "pol_demo",
+    "policy_version": 1,
+    "decider": {
+      "method": "policy",
+      "id": "pol_demo"
+    },
+    "reason": "auto-decided by policy pol_demo v1",
+    "created_at": "2026-07-21T08:36:03.907Z",
+    "decided_at": "2026-07-21T08:36:03.907Z",
+    "prev_hash": "288ddfff72b6331255c0724c3003c222d9b3c4b0cbab3bfdc3b552db683b658d",
+    "signer": {
+      "key_id": "ws_demo_key",
+      "alg": "ed25519"
+    },
+    "receipt_hash": "154255cbf15fc5c81f9f116bf6d54c753f33e8a4d3d5eeaf65c5a487669348d6",
+    "sig": "LVvnfoUPIWPT6Cr3i/a5nBnjRfinaJ8xeQuvSYCeCQQskMOvAwW+Ud0PW+hrjsCRVbL0jDY9Mi75CksGtLzFBQ=="
+  },
+  {
+    "v": 1,
+    "request_id": "req_a6b9a309-658c-4f37-a58b-2e2628662d70",
+    "workspace_id": "ws_demo",
+    "actor": {
+      "type": "agent_key",
+      "id": "demo_agent"
+    },
+    "action_type": "file_list",
+    "verdict": "approve",
+    "status": "approved",
+    "risk": "low",
+    "policy_id": "pol_demo",
+    "policy_version": 1,
+    "decider": {
+      "method": "policy",
+      "id": "pol_demo"
+    },
+    "reason": "auto-decided by policy pol_demo v1",
+    "created_at": "2026-07-21T08:36:03.912Z",
+    "decided_at": "2026-07-21T08:36:03.912Z",
+    "prev_hash": "154255cbf15fc5c81f9f116bf6d54c753f33e8a4d3d5eeaf65c5a487669348d6",
+    "signer": {
+      "key_id": "ws_demo_key",
+      "alg": "ed25519"
+    },
+    "receipt_hash": "1ffad8b1aea21d3f28711da7ccd72d24c428e65070b84e90d236fc110c885818",
+    "sig": "e4kwQiEQfep0sQ5E11tauip91k2/SXOIMOBmvQBnfHxZtY93/fSGFUJtxYPt4Gm5TPEpp+mq+amIHXtwUtapBg=="
+  },
+  {
+    "v": 1,
+    "request_id": "req_cb3f4db6-b3a3-458e-8624-15d7cac3a0cf",
+    "workspace_id": "ws_demo",
+    "actor": {
+      "type": "agent_key",
+      "id": "demo_agent"
+    },
+    "action_type": "file_read",
+    "verdict": "approve",
+    "status": "approved",
+    "risk": "low",
+    "policy_id": "pol_demo",
+    "policy_version": 1,
+    "decider": {
+      "method": "policy",
+      "id": "pol_demo"
+    },
+    "reason": "auto-decided by policy pol_demo v1",
+    "created_at": "2026-07-21T08:36:03.916Z",
+    "decided_at": "2026-07-21T08:36:03.916Z",
+    "prev_hash": "1ffad8b1aea21d3f28711da7ccd72d24c428e65070b84e90d236fc110c885818",
+    "signer": {
+      "key_id": "ws_demo_key",
+      "alg": "ed25519"
+    },
+    "receipt_hash": "a3e5f08ab39b90a04df83bd10e35b5239a8dd6ae5bd25b888c2e64561b5cf645",
+    "sig": "e8P2Jtv+OCr17Uu32fxW211hLu2HlOW6XdWLqVRR0de3iHLLxjoYdh+FYZ47GOZZKhEhsnorU/wUY2tr5NUKCQ=="
+  },
+  {
+    "v": 1,
+    "request_id": "req_81a1649e-c601-46eb-9116-8d0f0d0c5a77",
+    "workspace_id": "ws_demo",
+    "actor": {
+      "type": "agent_key",
+      "id": "demo_agent"
+    },
+    "action_type": "file_read",
+    "verdict": "approve",
+    "status": "approved",
+    "risk": "low",
+    "policy_id": "pol_demo",
+    "policy_version": 1,
+    "decider": {
+      "method": "policy",
+      "id": "pol_demo"
+    },
+    "reason": "auto-decided by policy pol_demo v1",
+    "created_at": "2026-07-21T08:36:03.922Z",
+    "decided_at": "2026-07-21T08:36:03.922Z",
+    "prev_hash": "a3e5f08ab39b90a04df83bd10e35b5239a8dd6ae5bd25b888c2e64561b5cf645",
+    "signer": {
+      "key_id": "ws_demo_key",
+      "alg": "ed25519"
+    },
+    "receipt_hash": "0b20f0d0ea2a17dda8d88af469ea144e71c8ca6c1ed7bec4e3aab199d3981429",
+    "sig": "wIDWdD6+p9/6/j12IMpjjVGFIRgDq6Ub1M18ssFEUhJCPYvSbd9iTwYE0wUHX2duk4sI8sqnRw7PX3Fq5ut0Dw=="
+  },
+  {
+    "v": 1,
+    "request_id": "req_193e6c06-9173-4c4e-a800-8ba0c9b1c628",
+    "workspace_id": "ws_demo",
+    "actor": {
+      "type": "agent_key",
+      "id": "demo_agent"
+    },
+    "action_type": "file_list",
+    "verdict": "approve",
+    "status": "approved",
+    "risk": "low",
+    "policy_id": "pol_demo",
+    "policy_version": 1,
+    "decider": {
+      "method": "policy",
+      "id": "pol_demo"
+    },
+    "reason": "auto-decided by policy pol_demo v1",
+    "created_at": "2026-07-21T08:36:03.925Z",
+    "decided_at": "2026-07-21T08:36:03.925Z",
+    "prev_hash": "0b20f0d0ea2a17dda8d88af469ea144e71c8ca6c1ed7bec4e3aab199d3981429",
+    "signer": {
+      "key_id": "ws_demo_key",
+      "alg": "ed25519"
+    },
+    "receipt_hash": "7e3784f7b97be59c2d5565b70e17fb07c8f899f3d3f7267a1a2cd2a24c73f3bc",
+    "sig": "dXSbCZdPDmOu8KwYctmOdr5o6E4lCCvxzFwHUtFJyMF8tsNObbdzWlMqM+zLzmwRXGDPitGs6b4EOUGGhKLWDg=="
+  },
+  {
+    "v": 1,
+    "request_id": "req_0bef05a5-680e-49fd-a3ee-e5770cb0a931",
+    "workspace_id": "ws_demo",
+    "actor": {
+      "type": "agent_key",
+      "id": "demo_agent"
+    },
+    "action_type": "git_push",
+    "verdict": "approve",
+    "status": "approved",
+    "risk": "high",
+    "policy_id": "pol_demo",
+    "policy_version": 1,
+    "decider": {
+      "method": "app",
+      "id": "ryan@vorion.org"
+    },
+    "reason": "Reviewed the diff — feature branch, --force-with-lease, only my own commits. Safe.",
+    "created_at": "2026-07-21T08:36:03.930Z",
+    "decided_at": "2026-07-21T08:36:03.932Z",
+    "prev_hash": "7e3784f7b97be59c2d5565b70e17fb07c8f899f3d3f7267a1a2cd2a24c73f3bc",
+    "signer": {
+      "key_id": "ws_demo_key",
+      "alg": "ed25519"
+    },
+    "receipt_hash": "227ca7f7fcfc1efdcdf130dc46cb735e47ae6288080c37b561164cabb30e29c1",
+    "sig": "H4Mj8yYQabUFY2KR4TwPnosBGGkKs4wpixQgqphYSgD9PsV7oSUyT833f/HmK8Gereyomdh9bqjG/M5fSD4cDA=="
+  },
+  {
+    "v": 1,
+    "request_id": "req_5374962c-7872-4bb6-95c5-3f0bca07f85c",
+    "workspace_id": "ws_demo",
+    "actor": {
+      "type": "agent_key",
+      "id": "demo_agent"
+    },
+    "action_type": "db_migrate",
+    "verdict": "approve",
+    "status": "approved",
+    "risk": "high",
+    "policy_id": "pol_demo",
+    "policy_version": 1,
+    "decider": {
+      "method": "app",
+      "id": "ryan@vorion.org"
+    },
+    "reason": "Additive index only, no data loss, CONCURRENTLY avoids a table lock. Go.",
+    "created_at": "2026-07-21T08:36:03.937Z",
+    "decided_at": "2026-07-21T08:36:03.938Z",
+    "prev_hash": "227ca7f7fcfc1efdcdf130dc46cb735e47ae6288080c37b561164cabb30e29c1",
+    "signer": {
+      "key_id": "ws_demo_key",
+      "alg": "ed25519"
+    },
+    "receipt_hash": "62bac06514629ab2d6ffd3bf40829bea874923bc6b948e67f15d9a8ed12f3744",
+    "sig": "fEOgHQ6Xk4tw8hSvNjn6GyAah2bF5bkcFVGBdK7P0jFsD1omNV0JhWR10CllcR6ji1SS6oSv1QktsFSDMSfbBQ=="
+  },
+  {
+    "v": 1,
+    "request_id": "req_5edf8e55-8839-4c48-85ff-7500bec59bcf",
+    "workspace_id": "ws_demo",
+    "actor": {
+      "type": "agent_key",
+      "id": "demo_agent"
+    },
+    "action_type": "deploy",
+    "verdict": "approve",
+    "status": "approved",
+    "risk": "medium",
+    "policy_id": "pol_demo",
+    "policy_version": 1,
+    "decider": {
+      "method": "app",
+      "id": "ryan@vorion.org"
+    },
+    "reason": "Staging only, smoke tests are green. Approved.",
+    "created_at": "2026-07-21T08:36:03.943Z",
+    "decided_at": "2026-07-21T08:36:03.944Z",
+    "prev_hash": "62bac06514629ab2d6ffd3bf40829bea874923bc6b948e67f15d9a8ed12f3744",
+    "signer": {
+      "key_id": "ws_demo_key",
+      "alg": "ed25519"
+    },
+    "receipt_hash": "dff7b792b69ad85e830ccd1f1377d6d9faf17395789d8ef0fbebd8e2865346a6",
+    "sig": "55DgWbNu1zNTdcekZWn5oFPT+se18wEq+zngT6/KAH0Jsa+4RTPspfqUDzzbnh1iI3drKdnOetM59NrogYZ3Cg=="
+  },
+  {
+    "v": 1,
+    "request_id": "req_1a4d03a3-fda5-4ae6-a276-2bc2df1d69cd",
+    "workspace_id": "ws_demo",
+    "actor": {
+      "type": "agent_key",
+      "id": "demo_agent"
+    },
+    "action_type": "shell_exec",
+    "verdict": "approve",
+    "status": "approved",
+    "risk": "medium",
+    "policy_id": "pol_demo",
+    "policy_version": 1,
+    "decider": {
+      "method": "app",
+      "id": "ryan@vorion.org"
+    },
+    "reason": "Reproducible clean reinstall from a frozen lockfile. Fine.",
+    "created_at": "2026-07-21T08:36:03.948Z",
+    "decided_at": "2026-07-21T08:36:03.951Z",
+    "prev_hash": "dff7b792b69ad85e830ccd1f1377d6d9faf17395789d8ef0fbebd8e2865346a6",
+    "signer": {
+      "key_id": "ws_demo_key",
+      "alg": "ed25519"
+    },
+    "receipt_hash": "b5a43d03daf53f4b1c7fd516b86ad4b374da38a91e1326391e8b76221622e0b6",
+    "sig": "7fM4yDL4Tng65JcNa751hyS6oZpop/aeuDPr4DQA8eUBEmD1GNVn7Of3VJXeL37nMDNNIs9euucnDjJqREs7AA=="
+  },
+  {
+    "v": 1,
+    "request_id": "req_cf62e88f-c9e9-446c-8473-40dcd049e7da",
+    "workspace_id": "ws_demo",
+    "actor": {
+      "type": "agent_key",
+      "id": "demo_agent"
+    },
+    "action_type": "git_push",
+    "verdict": "deny",
+    "status": "denied",
+    "risk": "critical",
+    "policy_id": "pol_demo",
+    "policy_version": 1,
+    "decider": {
+      "method": "app",
+      "id": "ryan@vorion.org"
+    },
+    "reason": "This discards collaborators’ commits. Do NOT force-push main — open a PR instead.",
+    "created_at": "2026-07-21T08:36:03.956Z",
+    "decided_at": "2026-07-21T08:36:03.957Z",
+    "prev_hash": "b5a43d03daf53f4b1c7fd516b86ad4b374da38a91e1326391e8b76221622e0b6",
+    "signer": {
+      "key_id": "ws_demo_key",
+      "alg": "ed25519"
+    },
+    "receipt_hash": "242bda722a78a022b18fb4026c0a39a8d26e76fc3f8bac9ede02bbde670c95b3",
+    "sig": "6Gs1Qh8xqOeEJ4N4kDZGDJiKPEiJZUgjv75lIvZngdmrKJzIBDa0fYcHOqoBHEs6ZIuljlbpo55mu3YCMsO1DQ=="
+  },
+  {
+    "v": 1,
+    "request_id": "req_ffd7513e-3b93-4768-8ce3-1dd90ac2121d",
+    "workspace_id": "ws_demo",
+    "actor": {
+      "type": "agent_key",
+      "id": "demo_agent"
+    },
+    "action_type": "payment",
+    "verdict": "deny",
+    "status": "denied",
+    "risk": "critical",
+    "policy_id": "pol_demo",
+    "policy_version": 1,
+    "decider": {
+      "method": "app",
+      "id": "ryan@vorion.org"
+    },
+    "reason": "Payments need finance sign-off. The agent is not authorized to move money.",
+    "created_at": "2026-07-21T08:36:03.962Z",
+    "decided_at": "2026-07-21T08:36:03.964Z",
+    "prev_hash": "242bda722a78a022b18fb4026c0a39a8d26e76fc3f8bac9ede02bbde670c95b3",
+    "signer": {
+      "key_id": "ws_demo_key",
+      "alg": "ed25519"
+    },
+    "receipt_hash": "d65bc6b5618e37bd438cab34144621f3874dfce53f18371f9bc703c8d94df124",
+    "sig": "/g81fL0bFGulxyh1Axmt0PydcDEoIWjeEE+vRCWlsOON1Uke7hr+Jj3C+HCXodAdOQe0HtJC8RCRPh7W7jjLAQ=="
+  }
+]
