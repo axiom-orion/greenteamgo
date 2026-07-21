@@ -34,12 +34,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/vorionsys/greenteamgo.git",
+    "url": "git+https://github.com/axiom-orion/greenteamgo.git",
     "directory": "packages/identity"
   },
-  "homepage": "https://github.com/vorionsys/greenteamgo/tree/master/packages/identity#readme",
+  "homepage": "https://github.com/axiom-orion/greenteamgo/tree/master/packages/identity#readme",
   "bugs": {
-    "url": "https://github.com/vorionsys/greenteamgo/issues"
+    "url": "https://github.com/axiom-orion/greenteamgo/issues"
   },
   "exports": {
     ".": {

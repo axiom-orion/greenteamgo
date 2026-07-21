@@ -42,12 +42,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/vorionsys/greenteamgo.git",
+    "url": "git+https://github.com/axiom-orion/greenteamgo.git",
     "directory": "packages/mcp"
   },
-  "homepage": "https://github.com/vorionsys/greenteamgo/tree/master/packages/mcp#readme",
+  "homepage": "https://github.com/axiom-orion/greenteamgo/tree/master/packages/mcp#readme",
   "bugs": {
-    "url": "https://github.com/vorionsys/greenteamgo/issues"
+    "url": "https://github.com/axiom-orion/greenteamgo/issues"
   },
   "exports": {
     ".": {
