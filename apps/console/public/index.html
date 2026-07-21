@@ -30,6 +30,10 @@
   .verified { color: #22c55e; font-weight: 700; }
   .decided .summary { color: #94a3b8; }
   .verdict-approved { color:#22c55e; } .verdict-denied { color:#f87171; } .verdict-expired { color:#eab308; }
+  .denybox { margin-top: 10px; }
+  .reason { width: 100%; box-sizing: border-box; background:#0b1220; color:#e2e8f0; border:1px solid #334155; border-radius:8px; padding:8px 10px; font: inherit; resize: vertical; margin-bottom: 8px; }
+  .reason:focus { outline: none; border-color:#38bdf8; }
+  .canceldeny { background:#334155; color:#cbd5e1; }
 </style>
 </head>
 <body>
@@ -48,12 +52,10 @@
 <script>
 const riskClass = (r) => "risk-" + (r || "medium");
 
-async function decide(id, decision) {
-  let reason;
-  if (decision === "denied") reason = prompt("Reason for denial (optional):") || undefined;
+async function decide(id, decision, reason) {
   await fetch("/ui/decide", {
     method: "POST", headers: { "content-type": "application/json" },
-    body: JSON.stringify({ request_id: id, decision, reason }),
+    body: JSON.stringify({ request_id: id, decision, reason: reason || undefined }),
   });
   refresh();
 }
@@ -72,9 +74,19 @@ function pendingCard(r) {
     <div class="actions">
       <button class="approve">Approve</button>
       <button class="deny">Deny</button>
+    </div>
+    <div class="denybox" style="display:none">
+      <textarea class="reason" rows="2" placeholder="Reason — sent back to the agent so it can adapt (e.g. 'no force-push — rebase and open a PR')"></textarea>
+      <div class="actions">
+        <button class="confirmdeny deny">Confirm deny</button>
+        <button class="canceldeny">Cancel</button>
+      </div>
     </div>`;
+  const denybox = el.querySelector(".denybox");
   el.querySelector(".approve").onclick = () => decide(r.request_id, "approved");
-  el.querySelector(".deny").onclick = () => decide(r.request_id, "denied");
+  el.querySelector(".deny").onclick = () => { denybox.style.display = "block"; el.querySelector(".reason").focus(); };
+  el.querySelector(".canceldeny").onclick = () => { denybox.style.display = "none"; };
+  el.querySelector(".confirmdeny").onclick = () => decide(r.request_id, "denied", el.querySelector(".reason").value.trim());
   return el;
 }
 
