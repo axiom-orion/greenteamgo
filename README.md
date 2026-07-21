@@ -4,6 +4,8 @@
 
 Works with any MCP-capable agent; built and demoed against the **OpenAI Codex CLI** (governed by a human, with a **GPT-5.6** risk summary on every request). Part of a two-app agent-governance suite with **RedTeamGo**. Built on Vorion (BASIS / RFC-0002).
 
+![GreenTeamGo architecture — Codex → request_approval → policy triage → human inbox (GPT-5.6 risk brief) → Ed25519 signed receipt chain → offline verify](docs/architecture.svg)
+
 ## Repo layout
 
 - `packages/mcp` — `@vorionsys/greenteamgo-mcp`, the stdio MCP server agents install. Open-source surface; extracted to the public tier at publish time. Hash-only mode, fail-closed polling, side-effect-free library entry + separate bin.

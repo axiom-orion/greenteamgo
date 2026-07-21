@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1120 560" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+  <rect x="0" y="0" width="1120" height="560" fill="#0b1020"/>
+  <text x="40" y="46" fill="#f8fafc" font-size="26" font-weight="700">GreenTeamGo — the approval gate for Codex</text>
+  <text x="40" y="72" fill="#94a3b8" font-size="14">Codex asks first · a human decides · every yes, no, and timeout becomes a signed, tamper-evident receipt</text>
+
+  <defs>
+    <marker id="a" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#64748b"/>
+    </marker>
+  </defs>
+
+  <!-- 1. Codex (OpenAI) -->
+  <rect x="30" y="120" width="185" height="96" rx="12" fill="#0e1b33" stroke="#38bdf8" stroke-width="1.5"/>
+  <text x="122" y="150" fill="#7dd3fc" font-size="12" font-weight="700" text-anchor="middle">OPENAI CODEX</text>
+  <text x="122" y="172" fill="#e2e8f0" font-size="13" text-anchor="middle">the coding agent</text>
+  <text x="122" y="192" fill="#94a3b8" font-size="11.5" text-anchor="middle">reads AGENTS.md;</text>
+  <text x="122" y="207" fill="#94a3b8" font-size="11.5" text-anchor="middle">hits a risky action</text>
+
+  <!-- 2. MCP request_approval -->
+  <rect x="255" y="120" width="185" height="96" rx="12" fill="#111a2e" stroke="#334155"/>
+  <text x="347" y="152" fill="#e2e8f0" font-size="13" font-weight="700" text-anchor="middle">MCP: request_approval</text>
+  <text x="347" y="174" fill="#94a3b8" font-size="11.5" text-anchor="middle">fail-closed blocking poll</text>
+  <text x="347" y="192" fill="#94a3b8" font-size="11.5" text-anchor="middle">action · risk · payload hash</text>
+
+  <!-- 3. Policy triage -->
+  <rect x="480" y="120" width="185" height="96" rx="12" fill="#111a2e" stroke="#334155"/>
+  <text x="572" y="150" fill="#e2e8f0" font-size="13" font-weight="700" text-anchor="middle">Policy triage</text>
+  <text x="572" y="172" fill="#94a3b8" font-size="11.5" text-anchor="middle">versioned rules</text>
+  <text x="572" y="190" fill="#94a3b8" font-size="11.5" text-anchor="middle">allow · deny · gate</text>
+
+  <!-- arrows 1->2->3 -->
+  <line x1="215" y1="168" x2="253" y2="168" stroke="#64748b" stroke-width="2" marker-end="url(#a)"/>
+  <line x1="440" y1="168" x2="478" y2="168" stroke="#64748b" stroke-width="2" marker-end="url(#a)"/>
+
+  <!-- auto path (top) -->
+  <text x="700" y="112" fill="#22c55e" font-size="11.5" font-weight="600">auto-decide (safe/forbidden)</text>
+  <text x="700" y="128" fill="#64748b" font-size="11">no human paged →</text>
+  <path d="M665 140 C 740 120, 800 130, 905 205" fill="none" stroke="#16a34a" stroke-width="2" marker-end="url(#a)"/>
+
+  <!-- gate path down to human -->
+  <text x="588" y="238" fill="#eab308" font-size="11.5" font-weight="600">gate →</text>
+  <line x1="572" y1="216" x2="572" y2="262" stroke="#64748b" stroke-width="2" marker-end="url(#a)"/>
+
+  <!-- 4. Human inbox (the phone) + GPT-5.6 -->
+  <rect x="405" y="266" width="330" height="150" rx="12" fill="#0e1b33" stroke="#eab308" stroke-width="1.5"/>
+  <text x="570" y="294" fill="#fde68a" font-size="13" font-weight="700" text-anchor="middle">Human inbox — "the phone"</text>
+  <rect x="425" y="308" width="290" height="40" rx="8" fill="#0e1a2b" stroke="#38bdf8"/>
+  <text x="570" y="325" fill="#7dd3fc" font-size="11.5" font-weight="700" text-anchor="middle">GPT-5.6 (gpt-5.6-luna)</text>
+  <text x="570" y="340" fill="#bae6fd" font-size="11" text-anchor="middle">writes the one-line risk brief</text>
+  <text x="570" y="372" fill="#e2e8f0" font-size="12.5" text-anchor="middle">a human decides:</text>
+  <text x="570" y="393" fill="#94a3b8" font-size="11.5" text-anchor="middle">approve · deny + reason (→ Codex adapts)</text>
+  <text x="570" y="409" fill="#f87171" font-size="11.5" text-anchor="middle">· timeout = deny (fail-closed), also signed</text>
+
+  <!-- 5. Receipt chain -->
+  <rect x="800" y="160" width="210" height="120" rx="12" fill="#0e2417" stroke="#22c55e" stroke-width="1.5"/>
+  <text x="905" y="192" fill="#bbf7d0" font-size="13" font-weight="700" text-anchor="middle">Receipt chain</text>
+  <text x="905" y="214" fill="#e2e8f0" font-size="11.5" text-anchor="middle">Ed25519-signed,</text>
+  <text x="905" y="231" fill="#e2e8f0" font-size="11.5" text-anchor="middle">hash-linked</text>
+  <text x="905" y="252" fill="#94a3b8" font-size="11" text-anchor="middle">decider + reason sealed;</text>
+  <text x="905" y="267" fill="#94a3b8" font-size="11" text-anchor="middle">nothing deleted</text>
+
+  <!-- human -> receipt -->
+  <path d="M735 320 C 800 300, 780 300, 855 282" fill="none" stroke="#64748b" stroke-width="2" marker-end="url(#a)"/>
+
+  <!-- 6. verify -->
+  <rect x="800" y="320" width="210" height="96" rx="12" fill="#111a2e" stroke="#334155"/>
+  <text x="905" y="352" fill="#e2e8f0" font-size="13" font-weight="700" text-anchor="middle">greenteamgo-verify</text>
+  <text x="905" y="374" fill="#94a3b8" font-size="11.5" text-anchor="middle">offline · independent</text>
+  <text x="905" y="392" fill="#7dd3fc" font-size="11.5" text-anchor="middle">tamper-evident: anyone</text>
+  <text x="905" y="407" fill="#7dd3fc" font-size="11.5" text-anchor="middle">detects an altered byte</text>
+  <line x1="905" y1="280" x2="905" y2="318" stroke="#64748b" stroke-width="2" marker-end="url(#a)"/>
+
+  <text x="40" y="452" fill="#64748b" font-size="12">Two OpenAI tools, both load-bearing: Codex is the governed agent (and co-authored the NL→policy compiler); GPT-5.6 is the risk analyst the human acts on.</text>
+</svg>
