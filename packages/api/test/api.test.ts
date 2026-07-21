@@ -286,7 +286,7 @@ describe("HTTP handler (end-to-end over a real server)", () => {
     expect(verifyReceipt(decided.receipt, signing.publicKeyPem)).toEqual({ ok: true });
   });
 
-  it("exports the chain and public key so the verify CLI can audit without trusting the server", async () => {
+  it("exports the chain and public key so the verify CLI can audit the chain offline (tamper-evident)", async () => {
     const { service, store, signing } = seed();
     const url = await listen(createHandler(service, store));
 

@@ -4,7 +4,7 @@
 
 **Unanswered requests fail closed.** No decision by the deadline means deny. Always.
 
-Part of Newnansville Agent Teams, built on Vorion (BASIS / RFC-0002).
+Part of the GreenTeamGo / RedTeamGo suite, built on Vorion (BASIS / RFC-0002).
 
 ## Claude Code quickstart
 
@@ -72,7 +72,7 @@ request_approval({
 - **Fail closed.** Expiry, network failure at the deadline, quota errors, any error at all → the answer is no. The agent instruction is always "proceed only on approved".
 - **Payloads are hashed.** The SHA-256 of your payload is computed client-side and lands in the signed receipt; verify later that what was approved is what ran. With `hash_only: true`, the payload itself never leaves your machine — only the hash does.
 - **Approve costs attention, deny is cheap.** Approving happens in the app (biometric for high/critical — in development). Deny works from the notification.
-- **Receipts are portable.** Hash-linked, Ed25519-signed, RFC-0002 canonical serialization. Export the chain and verify it without trusting the server.
+- **Receipts are portable.** Hash-linked, Ed25519-signed, RFC-0002 canonical serialization. Export the chain and verify it offline — any alteration, deletion, or reordering is detectable.
 
 ## Blocking behavior
 

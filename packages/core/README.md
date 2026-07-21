@@ -37,7 +37,7 @@ verifyChain([r1, r2], (id) => (id === key.key_id ? key.publicKeyPem : undefined)
 
 ## Verify CLI
 
-Verify a chain without trusting the server that produced it:
+Verify a chain offline — it is tamper-evident (any alteration, deletion, or reordering is detectable):
 
 ```bash
 greenteamgo-verify receipts.json pubkeys.json
@@ -60,6 +60,12 @@ The receipt envelope is intentionally wide enough for both directions of the sui
 | `prev_hash` / `receipt_hash` / `sig` / `signer` | the chain + signature |
 
 **v1 claim is exactly "signed, hash-linked receipts."** Device-bound (human non-repudiation) signing is a later, non-breaking append via `decider.device_attestation` — reserved now.
+
+## What this does and does not prove (honest threat model)
+
+Receipts are **tamper-evident**: once a chain is exported, anyone can detect — offline, without the server — if any receipt was **altered, deleted, or reordered**, because that breaks a hash link or an Ed25519 signature.
+
+What it is **not**, in v1: tamper-*proof* against a compromised server. The workspace signing key is held server-side, so a fully compromised server could sign a *false* history from the start. Detecting that is what **device-bound countersigning** (a human's device co-signs the decision) is for — the envelope already reserves `decider.device_attestation` so it's a non-breaking upgrade. We say **tamper-evident**, never "trustless."
 
 ## License
 

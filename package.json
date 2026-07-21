@@ -1,7 +1,7 @@
 {
   "name": "greenteamgo",
   "private": true,
-  "description": "GreenTeamGo — human approval gate for AI agents. Newnansville Agent Teams.",
+  "description": "GreenTeamGo — human approval gate for AI agents.",
   "workspaces": [
     "packages/*",
     "apps/*"

@@ -1,7 +1,7 @@
 # The receipt envelope — suite-wide constraints
 
 _The load-bearing rules for anyone touching receipt shapes. Vendored from the
-suite architecture doc (private: `D:\projects\greenteamgo-redteamgo-suite.md`)
+suite architecture doc
 so the constraints travel with the code._
 
 One envelope serves both products — GreenTeamGo (outbound, cooperative:
@@ -41,7 +41,7 @@ Two byte-level invariants, enforced in `@vorionsys/greenteamgo-core`:
   `actor.evidence` can never produce a receipt that verifies in memory but
   fails after transport. Non-finite numbers refuse to canonicalize.
 
-Related decisions (private: `D:\projects\countersign-open-questions-decisions.md`):
+Related decisions:
 device-bound keys wait for a revenue signal (the envelope is already shaped for
 them); hash-only mode (payload never uploaded, only its SHA-256) is a v1
 feature; denials and expiries are free forever in billing terms.

@@ -1,8 +1,8 @@
 # GreenTeamGo
 
-Human approval gate for AI agents — push notification to your phone when your agent wants to do something risky; approve or deny; every decision becomes a signed, hash-linked receipt. **Unanswered requests fail closed.**
+**The approval gate for Codex.** Before your coding agent does something risky — a force-push, a destructive shell command, a payment — it asks first. A human approves or denies, and **every yes, no, and timeout becomes a signed, tamper-evident receipt you can verify yourself.** Unanswered requests fail closed: no decision by the deadline is a *deny*, and that expiry is sealed into the chain too.
 
-Part of **Newnansville Agent Teams** (with RedTeamGo). Built on Vorion (BASIS / RFC-0002).
+Works with any MCP-capable agent; built and demoed against the **OpenAI Codex CLI** (governed by a human, with a **GPT-5.6** risk summary on every request). Part of a two-app agent-governance suite with **RedTeamGo**. Built on Vorion (BASIS / RFC-0002).
 
 ## Repo layout
 
@@ -27,4 +27,3 @@ npm test
 
 **Receipt envelope:** the constraints that keep Green + Red on one format live in [`docs/receipt-envelope.md`](docs/receipt-envelope.md). Read it before touching receipt shapes.
 
-Product/strategy docs (private, not in this repo): `greenteamgo-redteamgo-suite.md` + `countersign-open-questions-decisions.md` in `D:\projects`.

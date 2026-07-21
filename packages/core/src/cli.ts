@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * greenteamgo-verify — verify a receipt chain without trusting the server.
+ * greenteamgo-verify — verify a receipt chain offline — tamper-evident (detects any alteration, deletion, or reordering).
  *
  * Usage:
  *   greenteamgo-verify <receipts.json> <pubkeys.json>

@@ -14,7 +14,7 @@ Codex ──(request_approval, via greenteamgo MCP)──▶ inbox API
 ## 1. Build
 
 ```
-cd D:\voriongit\greenteamgo
+cd greenteamgo
 npm install
 npm run build --workspaces
 ```
@@ -47,7 +47,7 @@ Codex calls `request_approval` → the request appears at http://localhost:4000/
 
 ## 5. Verify the receipts
 
-Every decision is in the workspace chain. Export and verify without trusting the server:
+Every decision is in the workspace chain. Export and verify the chain offline — any alteration, deletion, or reordering is detectable (tamper-evident):
 ```
 curl -s http://localhost:4000/v1/receipts -H "authorization: Bearer gtg_demo_agent_key" > receipts.json
 # /v1/keys returns {key_id, publicKeyPem}; the verifier wants a {key_id: pem} map:
