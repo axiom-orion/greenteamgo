@@ -41,6 +41,20 @@ evaluate(policy, { action_type: "git_push", risk: "high" });
 
 Wired into `@vorionsys/greenteamgo-api`: `allow`/`deny` seal a receipt with `decider.method: "policy"` and page nobody; `gate`/`challenge` create a pending request and notify. Auto and human decisions share one receipt chain.
 
+## Natural-language policy (GPT-5.6)
+
+`compilePolicy` turns workspace-owner instructions into a locally validated policy candidate. It uses `OPENAI_API_KEY`, defaults to `OPENAI_MODEL ?? "gpt-5.6-luna"`, and does not persist or activate the result.
+
+```ts
+import { compilePolicy } from "@vorionsys/greenteamgo-policy";
+
+const policy = await compilePolicy(
+  "Never let agents touch payments; auto-approve file reads; always ask before git push or deploy.",
+  { id: "pol_2", workspace_id: "ws1", version: 2 },
+);
+// policy.default_effect is always "gate"; invalid model output throws.
+```
+
 ## License
 
 MIT © Vorion
