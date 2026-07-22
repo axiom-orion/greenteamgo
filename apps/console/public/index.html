@@ -34,6 +34,12 @@
   .reason { width: 100%; box-sizing: border-box; background:#0b1220; color:#e2e8f0; border:1px solid #334155; border-radius:8px; padding:8px 10px; font: inherit; resize: vertical; margin-bottom: 8px; }
   .reason:focus { outline: none; border-color:#38bdf8; }
   .canceldeny { background:#334155; color:#cbd5e1; }
+  /* Deny modal — lives OUTSIDE the pending list so the poll can never destroy it */
+  .modal-backdrop { position: fixed; inset: 0; background: rgba(2,6,18,.72); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 50; }
+  .modal-backdrop.open { display: flex; }
+  .modal { width: 100%; max-width: 520px; background: #111a2e; border: 1px solid #334155; border-radius: 14px; padding: 22px; }
+  .modal h3 { margin: 0 0 4px; font-size: 16px; color: #fecaca; }
+  .modal .what { color: #94a3b8; font-size: 13px; margin: 0 0 14px; white-space: pre-wrap; }
 </style>
 </head>
 <body>
@@ -49,8 +55,22 @@
   <div id="history"><div class="empty">Nothing decided yet.</div></div>
 </main>
 
+<!-- Deny modal: single persistent element, never rebuilt by the poll -->
+<div class="modal-backdrop" id="denyModal">
+  <div class="modal">
+    <h3>Deny this request</h3>
+    <p class="what" id="denyWhat"></p>
+    <textarea class="reason" id="denyReason" rows="3" placeholder="Reason — sent back to the agent so it can adapt (e.g. 'no force-push on main — rebase and open a PR')"></textarea>
+    <div class="actions">
+      <button class="confirmdeny deny" id="denyConfirm">Confirm deny</button>
+      <button class="canceldeny" id="denyCancel">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const riskClass = (r) => "risk-" + (r || "medium");
+let pendingSig = ""; // only rebuild the pending list when the set of requests actually changes
 
 async function decide(id, decision, reason) {
   await fetch("/ui/decide", {
@@ -74,21 +94,33 @@ function pendingCard(r) {
     <div class="actions">
       <button class="approve">Approve</button>
       <button class="deny">Deny</button>
-    </div>
-    <div class="denybox" style="display:none">
-      <textarea class="reason" rows="2" placeholder="Reason — sent back to the agent so it can adapt (e.g. 'no force-push — rebase and open a PR')"></textarea>
-      <div class="actions">
-        <button class="confirmdeny deny">Confirm deny</button>
-        <button class="canceldeny">Cancel</button>
-      </div>
     </div>`;
-  const denybox = el.querySelector(".denybox");
   el.querySelector(".approve").onclick = () => decide(r.request_id, "approved");
-  el.querySelector(".deny").onclick = () => { denybox.style.display = "block"; el.querySelector(".reason").focus(); };
-  el.querySelector(".canceldeny").onclick = () => { denybox.style.display = "none"; };
-  el.querySelector(".confirmdeny").onclick = () => decide(r.request_id, "denied", el.querySelector(".reason").value.trim());
+  el.querySelector(".deny").onclick = () => openDenyModal(r);
   return el;
 }
+
+// Deny modal — its own state; the poll re-render never touches it.
+let denyingId = null;
+function openDenyModal(r) {
+  denyingId = r.request_id;
+  document.getElementById("denyWhat").textContent = r.summary + (r.detail ? "\n\n" + r.detail : "");
+  document.getElementById("denyReason").value = "";
+  document.getElementById("denyModal").classList.add("open");
+  document.getElementById("denyReason").focus();
+}
+function closeDenyModal() {
+  denyingId = null;
+  document.getElementById("denyModal").classList.remove("open");
+}
+document.getElementById("denyCancel").onclick = closeDenyModal;
+document.getElementById("denyConfirm").onclick = () => {
+  if (!denyingId) return;
+  const reason = document.getElementById("denyReason").value.trim();
+  const id = denyingId;
+  closeDenyModal();
+  decide(id, "denied", reason);
+};
 
 function historyCard(r) {
   const el = document.createElement("div");
@@ -118,7 +150,13 @@ async function refresh() {
       fetch("/ui/pending").then((r) => r.json()),
       fetch("/ui/history").then((r) => r.json()),
     ]);
-    render("pending", pending, pendingCard, "No pending requests. Ask Codex to do something risky…");
+    // Only rebuild the pending list when the request set (or its risk brief) actually changes,
+    // so a poll never yanks the DOM out from under you.
+    const sig = JSON.stringify(pending.map((r) => [r.request_id, !!r.ai_risk_summary]));
+    if (sig !== pendingSig) {
+      pendingSig = sig;
+      render("pending", pending, pendingCard, "No pending requests. Ask Codex to do something risky…");
+    }
     render("history", history, historyCard, "Nothing decided yet.");
   } catch { /* server not up yet */ }
 }

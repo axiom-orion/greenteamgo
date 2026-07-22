@@ -124,6 +124,7 @@ const server = createServer(async (req, res) => {
       const decided = [
         ...store.listByStatus(WS, "approved"),
         ...store.listByStatus(WS, "denied"),
+        ...store.listByStatus(WS, "expired"), // fail-closed timeouts are decisions too — show them
       ].sort((a, b) => (b.decided_at ?? "").localeCompare(a.decided_at ?? ""));
       return json(res, 200, decided.map(uiView));
     }
@@ -141,7 +142,10 @@ const server = createServer(async (req, res) => {
     }
 
     if (method === "GET" && (url.pathname === "/" || url.pathname === "/index.html")) {
-      res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+      res.writeHead(200, {
+        "content-type": "text/html; charset=utf-8",
+        "cache-control": "no-store, no-cache, must-revalidate",
+      });
       return void res.end(readFileSync(INDEX));
     }
 
