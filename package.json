@@ -7,7 +7,7 @@
     "apps/*"
   ],
   "scripts": {
-    "build": "npm run build --workspaces",
+    "build": "npm run build -w @vorionsys/greenteamgo-core -w @vorionsys/greenteamgo-identity -w @vorionsys/greenteamgo-notify -w @vorionsys/greenteamgo-mcp && npm run build -w @vorionsys/greenteamgo-policy -w @vorionsys/greenteamgo-api && npm run build -w @vorionsys/redteamgo -w @vorionsys/greenteamgo-console",
     "test": "npm run test --workspaces"
   }
 }
