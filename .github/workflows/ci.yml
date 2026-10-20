@@ -1,0 +1,33 @@
+name: CI
+
+# Builds every workspace in dependency order, then runs every package's tests.
+# Runs on pull requests and on pushes to master.
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    name: build · test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Build (dependency order)
+        run: npm run build
+
+      - name: Test (all workspaces)
+        run: npm test

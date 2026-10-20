@@ -1,0 +1,18 @@
+# .mailmap — one display identity for Ryan Cason's commits across handles
+# (chunkstar was renamed flasun; several machines used different names).
+# git log / git shortlog read this file; history is not rewritten.
+# Commits authored by Claude and by the shared Vorion company accounts are left as recorded.
+Ryan Cason <30188453+flasun@users.noreply.github.com> chunkstar <racason@gmail.com>
+Ryan Cason <30188453+flasun@users.noreply.github.com> chunkstar <chunkstar@users.noreply.github.com>
+Ryan Cason <30188453+flasun@users.noreply.github.com> chunkstar <30188453+chunkstar@users.noreply.github.com>
+Ryan Cason <30188453+flasun@users.noreply.github.com> chunkstar <GITHUB_NOREPLY_EMAIL>
+Ryan Cason <30188453+flasun@users.noreply.github.com> Yudount nuomea <30188453+flasun@users.noreply.github.com>
+Ryan Cason <30188453+flasun@users.noreply.github.com> Yudount nuomea <30188453+chunkstar@users.noreply.github.com>
+Ryan Cason <30188453+flasun@users.noreply.github.com> flasun <30188453+flasun@users.noreply.github.com>
+Ryan Cason <30188453+flasun@users.noreply.github.com> flasun <racason@gmail.com>
+Ryan Cason <30188453+flasun@users.noreply.github.com> racason <racason@gmail.com>
+Ryan Cason <30188453+flasun@users.noreply.github.com> axiom-orion <racason@gmail.com>
+Ryan Cason <30188453+flasun@users.noreply.github.com> Ryan Cason <racason@gmail.com>
+Ryan Cason <30188453+flasun@users.noreply.github.com> Ryan Cason <ryan@vorion.org>
+Ryan Cason <30188453+flasun@users.noreply.github.com> Vorion <ryan@vorion.org>
+Ryan Cason <30188453+flasun@users.noreply.github.com> vorionsys <ryan@vorion.org>
