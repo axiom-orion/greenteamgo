@@ -10,12 +10,15 @@
 # "Codex asks first, and every yes, no, and timeout becomes a signed,
 #  tamper-evident receipt you can verify yourself."
 #
-# Runs in Git Bash on Windows. Re-runnable; cleans its temp files at start.
+# Needs a console already running on :4000 with a non-empty chain. For a
+# self-contained, cross-platform version use `npm run demo` (demo/run-demo.mjs).
+# Runs in bash (incl. Git Bash on Windows). Re-runnable; cleans its temp files.
 # ============================================================================
 set -uo pipefail
 
-# ── config (per the submission brief) ──────────────────────────────────────
-REPO="D:/voriongit/greenteamgo"
+# ── config ─────────────────────────────────────────────────────────────────
+# Repo root is derived from this script's location, so it runs from any clone.
+REPO="$(cd "$(dirname "$0")/.." && pwd)"
 BASE="http://localhost:4000"
 AGENT_KEY="gtg_demo_agent_key"
 CLI="$REPO/packages/core/dist/cli.js"
