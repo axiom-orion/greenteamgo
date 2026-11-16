@@ -31,3 +31,8 @@ jobs:
 
       - name: Test (all workspaces)
         run: npm test
+
+      # End-to-end check of the README's claim: the real chain verifies and a
+      # one-character edit is rejected. Non-zero exit if either half fails.
+      - name: Demo (approve · sign · verify · tamper)
+        run: npm run demo
